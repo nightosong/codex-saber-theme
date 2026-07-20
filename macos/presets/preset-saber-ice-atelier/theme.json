@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "id": "preset-saber-ice-atelier",
+  "name": "Saber Ice Atelier",
+  "brandSubtitle": "CODEX SABER THEME",
+  "tagline": "Make something wonderful.",
+  "projectPrefix": "选择项目 · ",
+  "projectLabel": "◉  选择项目",
+  "statusText": "SABER THEME ONLINE",
+  "quote": "MAKE SOMETHING WONDERFUL",
+  "image": "background.jpg",
+  "cardArt": [
+    "card-archer.png",
+    "card-lancer.png",
+    "card-berserker.png",
+    "card-rider.png"
+  ],
+  "sidebarEmblem": "sidebar-emblem.png",
+  "environmentCardArt": "environment-card-canopy.png",
+  "filePanelArt": "file-panel-archer.png",
+  "reviewPanelArt": "review-panel-rin.png",
+  "animatedOverlay": "saber-skirt-loop.webp",
+  "appearance": "light",
+  "art": {
+    "safeArea": "left",
+    "taskMode": "ambient",
+    "focusX": 1,
+    "focusY": 1
+  },
+  "colors": {
+    "background": "#eef7ff",
+    "panel": "#ffffff",
+    "panelAlt": "#f4faff",
+    "accent": "#3f85bf",
+    "accentAlt": "#66a8dc",
+    "secondary": "#78b9e7",
+    "highlight": "#7699d4",
+    "text": "#1d2b3a",
+    "muted": "#62778c",
+    "line": "rgba(111, 174, 220, .30)"
+  }
+}

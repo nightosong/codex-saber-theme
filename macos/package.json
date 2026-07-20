@@ -1,0 +1,13 @@
+{
+  "name": "codex-saber-theme",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "./tests/run-tests.sh",
+    "doctor": "./scripts/doctor-macos.sh"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

@@ -1,0 +1,10 @@
+.DS_Store
+release/
+runtime/
+*.log
+*.tmp
+Codex Saber Theme Verification.png
+docs/screenshots/
+.idea/
+.vscode/
+*.swp
