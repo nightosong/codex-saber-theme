@@ -546,6 +546,32 @@ assert.equal(filePanelArt.rootStyle.values.get("--dream-skin-file-panel-art"), '
 const reviewPanelArt = createFixture(cardArtTheme);
 vm.runInNewContext(reviewPanelArt.payloadFor(cardArtTheme, ".fixture { color: blue; }", [], null, null, null, "data:image/png;base64,AA=="), reviewPanelArt.context);
 assert.equal(reviewPanelArt.rootStyle.values.get("--dream-skin-review-panel-art"), 'url("blob:fixture-2")');
+const sidebarRouteExit = createFixture(cardArtTheme);
+vm.runInNewContext(sidebarRouteExit.payload, sidebarRouteExit.context);
+for (const id of [
+  "codex-dream-skin-file-panel-art",
+  "codex-dream-skin-review-panel-art",
+  "codex-dream-skin-rin-occlusion",
+]) {
+  const node = sidebarRouteExit.document.createElement("div");
+  node.id = id;
+  sidebarRouteExit.document.body.appendChild(node);
+}
+const sidebarNavigationTarget = {
+  closest(selector) {
+    return selector.includes("data-app-shell-sidebar-trigger") ? {} : null;
+  },
+};
+sidebarRouteExit.documentListeners.get("pointerdown")({ target: sidebarNavigationTarget });
+assert.equal(sidebarRouteExit.nodes.has("codex-dream-skin-review-panel-art"), false,
+  "Rin must be removed in the sidebar-toggle pointer event before route mutation scheduling.");
+assert.equal(sidebarRouteExit.nodes.has("codex-dream-skin-file-panel-art"), false,
+  "The companion panel artwork must leave with Rin.");
+assert.equal(sidebarRouteExit.nodes.has("codex-dream-skin-rin-occlusion"), false,
+  "Rin's occlusion mask must not outlive the artwork.");
+assert.equal(sidebarRouteExit.window.__CODEX_DREAM_SKIN_STATE__.cleanup(), true);
+assert.equal(sidebarRouteExit.documentListeners.has("pointerdown"), false);
+assert.equal(sidebarRouteExit.documentListeners.has("click"), false);
 const animatedOverlay = createFixture(cardArtTheme);
 vm.runInNewContext(animatedOverlay.payloadFor(
   cardArtTheme,

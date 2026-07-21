@@ -10,16 +10,15 @@
   "quote": "MAKE SOMETHING WONDERFUL",
   "image": "background.jpg",
   "cardArt": [
-    "card-archer.png",
-    "card-lancer.png",
-    "card-berserker.png",
-    "card-rider.png"
+    "card-archer.webp",
+    "card-lancer.webp",
+    "card-berserker.webp",
+    "card-rider.webp"
   ],
   "sidebarEmblem": "sidebar-emblem.png",
   "environmentCardArt": "environment-card-canopy.png",
   "filePanelArt": "file-panel-archer.png",
   "reviewPanelArt": "review-panel-rin.png",
-  "animatedOverlay": "saber-skirt-loop.webp",
   "appearance": "light",
   "art": {
     "safeArea": "left",

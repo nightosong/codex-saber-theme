@@ -898,6 +898,10 @@
       try { state.motionQuery.removeEventListener("change", state.motionHandler); } catch {}
     }
     if (state?.visibilityHandler) document.removeEventListener("visibilitychange", state.visibilityHandler);
+    if (state?.sidebarNavigationHandler) {
+      document.removeEventListener("pointerdown", state.sidebarNavigationHandler, true);
+      document.removeEventListener("click", state.sidebarNavigationHandler, true);
+    }
     if (state?.artUrl) URL.revokeObjectURL(state.artUrl);
     for (const url of state?.cardArtUrls ?? []) URL.revokeObjectURL(url);
     if (state?.sidebarEmblemUrl) URL.revokeObjectURL(state.sidebarEmblemUrl);
@@ -910,6 +914,30 @@
   };
 
   const scheduler = { timeout: null, frame: null, root: false, route: false, layout: false };
+  const hidePanelArtForSidebarNavigation = () => {
+    document.getElementById(FILE_PANEL_ART_ID)?.remove();
+    document.getElementById(REVIEW_PANEL_ART_ID)?.remove();
+    document.getElementById(RIN_OCCLUSION_ID)?.remove();
+  };
+  const sidebarNavigationHandler = (event) => {
+    const target = event?.target;
+    if (!target?.closest) return;
+    if (target.closest('[data-app-shell-sidebar-trigger="true"]')) {
+      hidePanelArtForSidebarNavigation();
+      return;
+    }
+    const control = target.closest(
+      'aside.app-shell-left-panel a[href], aside.app-shell-left-panel [role="link"], aside.app-shell-left-panel button',
+    );
+    if (!control) return;
+    const label = `${control.getAttribute?.("aria-label") ?? ""} ${control.textContent ?? ""}`
+      .replace(/\s+/g, " ")
+      .trim();
+    const isLink = control.matches?.('a[href], [role="link"]');
+    const isRouteOrSidebarToggle = /^(?:新建任务|拉取请求|已安排|插件|折叠显示|展开显示|new task|pull requests?|scheduled|plugins?|collapse|expand)$/i
+      .test(label);
+    if (isLink || isRouteOrSidebarToggle) hidePanelArtForSidebarNavigation();
+  };
   const flushScheduledEnsure = () => {
     if (scheduler.frame !== null && typeof cancelAnimationFrame === "function") {
       cancelAnimationFrame(scheduler.frame);
@@ -1013,6 +1041,7 @@
     motionQuery,
     motionHandler,
     visibilityHandler,
+    sidebarNavigationHandler,
     resizeTimer,
     resizing,
     artUrl,
@@ -1075,6 +1104,8 @@
     motionQuery.addEventListener("change", motionHandler);
   }
   document.addEventListener("visibilitychange", visibilityHandler);
+  document.addEventListener("pointerdown", sidebarNavigationHandler, true);
+  document.addEventListener("click", sidebarNavigationHandler, true);
   const analysisPromise = artAnalysis ? Promise.resolve(null) : analyzeArt();
   window[STATE_KEY].analysisTimer = analysisTimer;
   analysisPromise.then((analysis) => {

@@ -36,4 +36,18 @@ If Codex is running and installation cannot continue safely, ask the user to app
   --restart-codex
 ```
 
+## Repository development
+
+To make this Mac run the engine directly from the current checkout:
+
+```bash
+cd macos
+./scripts/use-repository-macos.sh
+~/.codex/codex-saber-theme/scripts/apply-repository-theme-macos.sh
+```
+
+The first command preserves any existing local engine and creates a symbolic
+link. Run the second command after changing repository CSS, scripts, or preset
+assets. It must not close or restart Codex without explicit user confirmation.
+
 Report whether tests, installation, theme activation, and verification passed. On failure, preserve backups and report the exact failing command.
