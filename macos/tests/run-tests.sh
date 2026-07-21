@@ -80,6 +80,22 @@ cleanup_tests() {
 }
 trap cleanup_tests EXIT
 
+# Repository development mode preserves an existing engine and links the
+# stable local path to this checkout. Re-running it must be idempotent.
+DEV_HOME="$TMP/development-home"
+DEV_ENGINE="$DEV_HOME/.codex/codex-saber-theme"
+/bin/mkdir -p "$DEV_ENGINE"
+: > "$DEV_ENGINE/existing-engine-marker"
+HOME="$DEV_HOME" "$ROOT/scripts/use-repository-macos.sh" >/dev/null
+[ -L "$DEV_ENGINE" ]
+[ "$(cd "$DEV_ENGINE" && pwd -P)" = "$ROOT" ]
+DEV_BACKUP="$(/usr/bin/find "$DEV_HOME/.codex" -maxdepth 1 -type d \
+  -name 'codex-saber-theme.backup-*' -print | /usr/bin/head -n 1)"
+[ -n "$DEV_BACKUP" ] && [ -f "$DEV_BACKUP/existing-engine-marker" ]
+HOME="$DEV_HOME" "$ROOT/scripts/use-repository-macos.sh" >/dev/null
+[ "$(/usr/bin/find "$DEV_HOME/.codex" -maxdepth 1 -type d \
+  -name 'codex-saber-theme.backup-*' | /usr/bin/wc -l | /usr/bin/tr -d ' ')" = "1" ]
+
 # Standalone archives flatten macos/ to their root. Prompt guides and NOTICE
 # must describe that layout and must not claim that Windows assets are bundled.
 STANDALONE_ROOT="$TMP/standalone-root"
@@ -141,7 +157,7 @@ UNSAFE_ENGINE="$TMP/unsafe\"engine"
 /usr/bin/printf '#!/bin/bash\ntrue\n' > "$UNSAFE_ENGINE/scripts/start-dream-skin-macos.sh"
 /bin/chmod +x "$UNSAFE_ENGINE/scripts/start-dream-skin-macos.sh"
 UNSAFE_MENU_OUTPUT="$(
-  /usr/bin/env CODEX_DREAM_SKIN_ENGINE="$UNSAFE_ENGINE" \
+  /usr/bin/env CODEX_SABER_THEME_ENGINE="$UNSAFE_ENGINE" \
     "$ROOT/menubar/codex_dream_skin.10s.sh"
 )"
 /usr/bin/printf '%s\n' "$UNSAFE_MENU_OUTPUT" | /usr/bin/grep -F -q \

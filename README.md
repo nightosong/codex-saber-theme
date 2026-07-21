@@ -34,6 +34,16 @@ Codex 会根据 [`AGENTS.md`](./AGENTS.md) 完成测试、安装、主题切换�
 
 主题程序安装在 `~/.codex/codex-saber-theme`。已有主题和备份继续保存在兼容状态目录中。
 
+本仓库开发时，可以让本机直接使用当前工作区：
+
+```bash
+cd macos
+./scripts/use-repository-macos.sh
+./scripts/apply-repository-theme-macos.sh
+```
+
+以后修改主题资源或代码，只需再次运行第二条命令进行本机测试；改动仍完整保留在 Git 工作区中。
+
 ## 恢复
 
 需要恢复官方外观时，告诉 Codex：

@@ -122,7 +122,7 @@ Logo 资源：`docs/images/sponsor-passion8.png`（及 svg）。
 | 换图库图 | 替换 `docs/images/gallery/skin-XX.jpg`，同步改 README 两份 caption |
 | 改赞助文案 | 同时改 `README.md` 与 `README.en.md` |
 | 发版推送 | 在本仓库目录 `git add` → `commit` → `push origin main` |
-| Mac 本机主题 | 改 `~/.codex/codex-saber-theme` 的 CSS/inject；与 GitHub 源码可不同步，属本机实验位 |
+| Mac 本机主题 | `~/.codex/codex-saber-theme` 链接当前 Git 仓库；通过开发应用命令同步和测试 |
 
 ---
 
