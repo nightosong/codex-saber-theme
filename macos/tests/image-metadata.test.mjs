@@ -29,12 +29,12 @@ const saber = await fs.readFile(path.join(
   macosRoot,
   "presets",
   "preset-saber-ice-atelier",
-  "background.jpg",
+  "background.png",
 ));
-assert.deepEqual(readImageMetadata(saber, ".jpg"), {
-  width: 2400,
-  height: 1350,
-  ratio: 2400 / 1350,
+assert.deepEqual(readImageMetadata(saber, ".png"), {
+  width: 3840,
+  height: 2160,
+  ratio: 3840 / 2160,
   wide: true,
   aspect: "wide",
   taskMode: "ambient",

@@ -142,7 +142,7 @@ fi
   seed_bundled_presets
   [ ! -e "$themes/preset-midnight-aurora" ] || exit 1
   [ -f "$themes/preset-saber-ice-atelier/theme.json" ] || exit 1
-  [ -f "$themes/preset-saber-ice-atelier/background.jpg" ] || exit 1
+  [ -f "$themes/preset-saber-ice-atelier/background.png" ] || exit 1
   [ -f "$themes/custom-keepme/theme.json" ] || exit 1
   seeded="$(/usr/bin/find "$themes" -maxdepth 1 -type d -name "preset-*" | /usr/bin/wc -l | /usr/bin/tr -d " ")"
   [ "$seeded" = "1" ] || exit 1

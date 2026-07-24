@@ -1283,7 +1283,7 @@ html.codex-dream-skin[data-dream-theme-id="preset-saber-ice-atelier"][data-dream
   background-size: auto 78% !important;
 }
 
-/* Animated crop from the lower-right of the 2400x1350 background. Its
+/* Animated crop from the lower-right of the 3840x2160 background. Its
    dimensions follow the exact 78vh wallpaper scale, so only the skirt patch
    replaces the matching static pixels without moving the character. */
 html.codex-dream-skin[data-dream-theme-id="preset-saber-ice-atelier"] #codex-dream-skin-animated-overlay {
