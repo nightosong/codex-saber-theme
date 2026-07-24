@@ -96,60 +96,6 @@ HOME="$DEV_HOME" "$ROOT/scripts/use-repository-macos.sh" >/dev/null
 [ "$(/usr/bin/find "$DEV_HOME/.codex" -maxdepth 1 -type d \
   -name 'codex-saber-theme.backup-*' | /usr/bin/wc -l | /usr/bin/tr -d ' ')" = "1" ]
 
-# Standalone archives flatten macos/ to their root. Prompt guides and NOTICE
-# must describe that layout and must not claim that Windows assets are bundled.
-STANDALONE_ROOT="$TMP/standalone-root"
-STANDALONE_DOCS="$TMP/standalone-source-docs"
-/bin/mkdir -p "$STANDALONE_ROOT" \
-  "$STANDALONE_DOCS/images/gallery" "$STANDALONE_DOCS/images/presets"
-/usr/bin/printf '%s\n' \
-  'macos/presets/preset-romantic-rose/ macos/assets/portal-hero.png macos/NOTICE.md windows/assets/theme.json' \
-  > "$STANDALONE_DOCS/reference-background-prompt-guide.md"
-/bin/cp "$STANDALONE_DOCS/reference-background-prompt-guide.md" \
-  "$STANDALONE_DOCS/reference-background-prompt-guide.en.md"
-/bin/cp "$STANDALONE_DOCS/reference-background-prompt-guide.md" \
-  "$STANDALONE_DOCS/background-generation-prompts.md"
-: > "$STANDALONE_DOCS/images/gallery/skin-01.jpg"
-: > "$STANDALONE_DOCS/images/presets/romantic-rose-source.png"
-: > "$STANDALONE_DOCS/images/hero-banner-red-white.png"
-/usr/bin/printf '%s\n' \
-  '- `presets/preset-romantic-rose/background.jpg`' \
-  '- `../windows/assets/dream-reference.jpg`' \
-  '- `../docs/images/presets/romantic-rose-source.png`' \
-  "They are included at the maintainer's direction as a local theme preset, source archive, and real runtime previews." \
-  > "$STANDALONE_ROOT/NOTICE.md"
-"$ROOT/scripts/prepare-standalone-docs.sh" "$STANDALONE_ROOT" "$STANDALONE_DOCS"
-/usr/bin/grep -F -q 'presets/preset-romantic-rose/' \
-  "$STANDALONE_ROOT/docs/reference-background-prompt-guide.md"
-/usr/bin/grep -F -q 'assets/portal-hero.png' \
-  "$STANDALONE_ROOT/docs/reference-background-prompt-guide.md"
-/usr/bin/grep -F -q 'https://github.com/Fei-Away/Codex-Dream-Skin/blob/main/windows/assets/theme.json' \
-  "$STANDALONE_ROOT/docs/reference-background-prompt-guide.md"
-[ -f "$STANDALONE_ROOT/docs/images/hero-banner-red-white.png" ]
-/usr/bin/grep -F -q '`docs/images/presets/romantic-rose-source.png`' \
-  "$STANDALONE_ROOT/NOTICE.md"
-/usr/bin/grep -F -q 'not included in this macOS archive' \
-  "$STANDALONE_ROOT/NOTICE.md"
-
-# A standalone studio can build another archive from its already-rewritten
-# docs. Source discovery must stay inside that studio and URL rewriting must
-# be idempotent.
-STANDALONE_SOURCE="$TMP/standalone-source"
-STANDALONE_REPACK="$TMP/standalone-repack"
-/bin/mkdir -p "$STANDALONE_SOURCE/scripts" "$STANDALONE_REPACK"
-/bin/cp "$ROOT/scripts/prepare-standalone-docs.sh" "$STANDALONE_SOURCE/scripts/"
-/bin/cp -R "$STANDALONE_ROOT/docs" "$STANDALONE_SOURCE/docs"
-/bin/cp "$STANDALONE_ROOT/NOTICE.md" "$STANDALONE_REPACK/NOTICE.md"
-"$STANDALONE_SOURCE/scripts/prepare-standalone-docs.sh" "$STANDALONE_REPACK"
-REPACK_GUIDE="$STANDALONE_REPACK/docs/reference-background-prompt-guide.md"
-/usr/bin/grep -F -q \
-  'https://github.com/Fei-Away/Codex-Dream-Skin/blob/main/windows/assets/theme.json' \
-  "$REPACK_GUIDE"
-if /usr/bin/grep -E -q 'tree/main/windows/assets|blob/main/https://' "$REPACK_GUIDE"; then
-  printf 'Standalone prompt URL rewriting is not idempotent.\n' >&2
-  exit 1
-fi
-
 # SwiftBar attributes are line-based; unsafe engine paths must never be emitted
 # into bash= or param*= fields.
 UNSAFE_ENGINE="$TMP/unsafe\"engine"
@@ -190,13 +136,16 @@ fi
   themes="$STATE_ROOT/themes"
   /bin/mkdir -p "$themes/custom-keepme"
   : > "$themes/custom-keepme/theme.json"
+  /bin/mkdir -p "$themes/preset-midnight-aurora"
+  : > "$themes/preset-midnight-aurora/theme.json"
   seed_bundled_presets
   seed_bundled_presets
-  [ -f "$themes/preset-midnight-aurora/theme.json" ] || exit 1
-  [ -f "$themes/preset-midnight-aurora/background.jpg" ] || exit 1
+  [ ! -e "$themes/preset-midnight-aurora" ] || exit 1
+  [ -f "$themes/preset-saber-ice-atelier/theme.json" ] || exit 1
+  [ -f "$themes/preset-saber-ice-atelier/background.jpg" ] || exit 1
   [ -f "$themes/custom-keepme/theme.json" ] || exit 1
   seeded="$(/usr/bin/find "$themes" -maxdepth 1 -type d -name "preset-*" | /usr/bin/wc -l | /usr/bin/tr -d " ")"
-  [ "$seeded" -ge 4 ] || exit 1
+  [ "$seeded" = "1" ] || exit 1
 ' _ "$ROOT"
 
 # Theme switches stage files and publish theme.json last, preserving a complete
@@ -387,7 +336,7 @@ STATUS_PID=""
 # The common stop path must reject a real watcher running on 19341 when the
 # saved state claims 1934, even though nodePath/injectorPath/start-time all
 # match. This exercises the signal gate directly (status has its own matcher).
-"$NODE" "$ROOT/scripts/injector.mjs" --watch --port 19341 --theme-dir "$ROOT/presets/preset-midnight-aurora" \
+"$NODE" "$ROOT/scripts/injector.mjs" --watch --port 19341 --theme-dir "$ROOT/presets/preset-saber-ice-atelier" \
   >"$TMP/near-prefix-injector.out" 2>&1 &
 WATCH_PID="$!"
 /bin/sleep 0.2

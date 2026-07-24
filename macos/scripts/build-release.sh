@@ -16,26 +16,6 @@ if [ "${1:-}" != "--skip-tests" ]; then "$ROOT/tests/run-tests.sh"; fi
   --exclude '.DS_Store' \
   --exclude 'release/' \
   "$ROOT/" "$TMP/codex-saber-theme/"
-
-# The macOS tree is also published as a standalone ZIP. Bundle prompt guides
-# and their referenced images, then translate repository paths for this root.
-"$ROOT/scripts/prepare-standalone-docs.sh" "$TMP/codex-saber-theme"
-rewrite_standalone_links() {
-  local file="$1"
-  local temporary="${file}.standalone"
-  /usr/bin/sed \
-    -e 's#\.\./docs/#docs/#g' \
-    -e 's#\.\./windows/#https://github.com/Fei-Away/Codex-Dream-Skin/tree/main/windows/#g' \
-    "$file" > "$temporary"
-  /bin/mv "$temporary" "$file"
-}
-rewrite_standalone_links "$TMP/codex-saber-theme/README.md"
-PRESET_README="$TMP/codex-saber-theme/presets/README.md"
-if [ -f "$PRESET_README" ]; then
-  temporary="${PRESET_README}.standalone"
-  /usr/bin/sed -e 's#\.\./\.\./docs/#../docs/#g' "$PRESET_README" > "$temporary"
-  /bin/mv "$temporary" "$PRESET_README"
-fi
 /usr/bin/find "$TMP/codex-saber-theme" -type f \( -name '.DS_Store' -o -name '._*' \) -delete
 /bin/chmod 755 "$TMP/codex-saber-theme"/*.command
 /bin/chmod 755 "$TMP/codex-saber-theme"/scripts/*.sh "$TMP/codex-saber-theme"/tests/*.sh

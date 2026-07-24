@@ -28,6 +28,14 @@ CODEX_APP_JOB_LABEL="com.openai.codex-dream-skin-studio.app"
 INJECTOR_JOB_LABEL="com.openai.codex-dream-skin-studio.injector"
 EXPECTED_CODEX_TEAM_ID="${CODEX_EXPECTED_TEAM_ID:-2DC432GLL2}"
 SKIN_VERSION="0.0.1"
+DEPRECATED_BUNDLED_PRESET_IDS=(
+  preset-amber-dusk
+  preset-cyber-neon
+  preset-forest-mist
+  preset-midnight-aurora
+  preset-romantic-rose
+  preset-sakura-dawn
+)
 
 fail() {
   local message="$*"
@@ -62,14 +70,27 @@ ensure_state_root() {
   /bin/chmod 700 "$STATE_ROOT"
 }
 
+# Remove preset packs that shipped in earlier upstream-based builds. This keeps
+# existing custom-* user themes intact while preventing old bundled themes from
+# lingering in the saved theme switcher after an upgrade.
+prune_deprecated_bundled_presets() {
+  local themes_root="$STATE_ROOT/themes"
+  [ -d "$themes_root" ] || return 0
+  local id
+  for id in "${DEPRECATED_BUNDLED_PRESET_IDS[@]}"; do
+    case "$id" in preset-*) /bin/rm -rf "$themes_root/$id" ;; esac
+  done
+}
+
 # Seed bundled preset packs into the user's themes/ library so a fresh install
-# ships with ready-to-use skins. Idempotent (each preset is refreshed in place)
+# ships with the Saber skin. Idempotent (each preset is refreshed in place)
 # and scoped to preset-* ids, so user-made custom-* packs are never touched.
 seed_bundled_presets() {
   local presets_root="$PROJECT_ROOT/presets"
   [ -d "$presets_root" ] || return 0
   local themes_root="$STATE_ROOT/themes"
   /bin/mkdir -p "$themes_root"
+  prune_deprecated_bundled_presets
   local src id dest entry
   for src in "$presets_root"/preset-*/; do
     [ -d "$src" ] || continue

@@ -72,26 +72,19 @@ That ZIP contains a visible installer plus a hidden `.codex-saber-theme` engine.
 
 CDP is powerful and unauthenticated on loopback. Prefer Restore when you are done theming.
 
-## Bundled presets
+## Bundled Theme
 
-This fork adds **Saber Ice Atelier** as its featured preset. A fresh install
-without an existing active theme selects it automatically:
+This repository ships **Saber Ice Atelier** as its bundled theme. A fresh
+install without an existing active theme selects it automatically:
 
 ```bash
 ~/.codex/codex-saber-theme/scripts/switch-theme-macos.sh --id preset-saber-ice-atelier
 ```
 
-The upstream featured preset and five procedural abstract presets remain
-available. Apply one directly, for example:
-
-```bash
-~/.codex/codex-saber-theme/scripts/switch-theme-macos.sh --id preset-midnight-aurora
-```
-
-Seeding is idempotent and only manages `preset-*` packs — your own `custom-*`
-themes from “换一张图” are never touched. Installation never overwrites an
-existing active theme; use `switch-theme-macos.sh` to select Saber explicitly
-when upgrading from an earlier Saber Theme installation.
+Seeding is idempotent and only manages the bundled Saber `preset-*` pack. Your
+own `custom-*` themes from “换一张图” are never touched. During upgrade, old
+upstream demo presets are removed from the saved theme library so the switcher
+stays focused on Saber.
 
 To contribute a preset, see [`presets/README.md`](./presets/README.md).
 
@@ -104,8 +97,6 @@ To contribute a preset, see [`presets/README.md`](./presets/README.md).
   place the subject in the right 58%–88% without touching the edge
 - Use pure edge-to-edge background art only: no window chrome, sidebar, cards,
   buttons, composer, readable text, logo, or watermark
-- The prompt-ready composition template and negative prompt live in
-  [`docs/reference-background-prompt-guide.md`](../docs/reference-background-prompt-guide.md)
 
 ## Adaptive image themes
 
@@ -171,10 +162,10 @@ the image loader:
   --safe-area left --task-mode banner
 ```
 
-Reset to the bundled abstract demo:
+Return to the bundled Saber theme:
 
 ```bash
-~/.codex/codex-saber-theme/scripts/customize-theme-macos.sh --reset-demo
+~/.codex/codex-saber-theme/scripts/switch-theme-macos.sh --id preset-saber-ice-atelier
 ```
 
 ## License
@@ -183,26 +174,10 @@ MIT — see `LICENSE`. Additional notices in `NOTICE.md` cover trademarks,
 runtime Node, user-provided artwork, third-party rights, and assets that are not
 licensed under the software license.
 
-## Sponsors
-
-Thanks to **[passion8.cc](https://passion8.cc/register?aff=TuPe)** for sponsoring this project.
-
-<p align="center">
-  <a href="https://passion8.cc/register?aff=TuPe">
-    <img src="../docs/images/sponsor-passion8.png" alt="Passion8" height="96">
-  </a>
-</p>
-
-<p align="center">
-  <a href="https://passion8.cc/register?aff=TuPe"><strong>Passion8｜感谢 passion8.cc 赞助本项目</strong></a><br>
-  AI API 中转站，支持 Codex / Claude Code / Grok 等工具接入。主题与 API 配置互相独立。
-</p>
-
 ## What this is not
 
 - Not an OpenAI product and not a fork of Codex source
 - Not a way to patch or rebrand the official binary
-- Not a Windows build (see `../windows/`)
 - Not an API proxy: theming does not change model providers or API keys
 
 If you use a third-party API relay, configure it separately — keep theme install and API config as two explicit steps.
