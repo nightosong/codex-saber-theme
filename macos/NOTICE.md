@@ -8,7 +8,9 @@ This fork references and builds on the upstream **Codex Dream Skin Studio**
 project. The upstream project name is retained here for attribution only; users
 do not need to install it separately.
 
-The MIT License in `LICENSE` applies to the **software source code** in this repository (scripts, CSS, injectors, docs that describe the software, and the abstract demo asset generated for this repo).
+The MIT License in `LICENSE` applies to the **software source code** in this
+repository: scripts, CSS, injectors, tests, and documentation that describes
+the software.
 
 It does **not** grant rights to:
 
@@ -16,22 +18,6 @@ It does **not** grant rights to:
 - Official Codex / ChatGPT application binaries, `.app` bundles, or `app.asar`
 - Any user-supplied images or third-party artwork you drop into a theme
 - Character likenesses, franchise art, or celebrity imagery
-
-## Demo artwork
-
-`assets/portal-hero.png` is original abstract geometric art generated for this open-source repository (no characters). Replace it with your own image before shipping a branded theme to customers.
-
-## Arina Hashimoto reference material
-
-The following user/maintainer-supplied files are excluded from the MIT software license:
-
-- `presets/preset-romantic-rose/background.jpg`
-- `../windows/assets/dream-reference.jpg`
-- `../docs/images/presets/romantic-rose-source.png`
-- `../docs/images/presets/romantic-rose-light.jpg`
-- `../docs/images/presets/romantic-rose-dark.jpg`
-
-They are included at the maintainer's direction as a local theme preset, source archive, and real runtime previews. They are not official OpenAI/Codex artwork. Their inclusion does not certify or grant third-party likeness, model-output, or redistribution rights. Downstream redistribution and commercial use require an independent rights review; the two runtime screenshots are documentation previews and must never be imported as wallpapers.
 
 ## Runtime
 

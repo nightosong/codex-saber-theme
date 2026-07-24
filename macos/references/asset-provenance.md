@@ -1,12 +1,18 @@
 # Asset provenance
 
-## Bundled demo hero
+## Fallback hero
 
 - File: `assets/portal-hero.png`
 - SHA-256: `cec7a03d1ca8f60add2bfb7d3fcd3fe29225ffeb3f68f98301f140535c470ac5`
 - Created: 2026-07-15 via gpt-image-2 (fuck.codexapis.com)
-- Purpose: default banner / task background preset for light red-white product hero
-- Rights: generated for this project theme pack
+- Purpose: local fallback image for payload checks and custom-theme tooling
+- Rights: generated for this project theme engine
+
+## Saber preset
+
+- Directory: `presets/preset-saber-ice-atelier/`
+- Purpose: bundled runtime Saber theme
+- Rights: excluded from the MIT software license; see `NOTICE.md`
 
 ## User themes
 
