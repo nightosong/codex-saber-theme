@@ -8,6 +8,7 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const macosRoot = path.resolve(here, "..");
 const template = await fs.readFile(path.join(macosRoot, "assets", "renderer-inject.js"), "utf8");
 const css = await fs.readFile(path.join(macosRoot, "assets", "dream-skin.css"), "utf8");
+const saberPreset = JSON.parse(await fs.readFile(path.join(macosRoot, "presets", "preset-saber-ice-atelier", "theme.json"), "utf8"));
 
 assert.doesNotMatch(
   css,
@@ -151,8 +152,8 @@ assert.match(
 );
 assert.match(
   css,
-  /data-dream-theme-id="preset-saber-ice-atelier"\][\s\S]{0,120}main\.main-surface\s*\{[\s\S]{0,260}rgb\(255 255 255 \/ \.10\)/,
-  "Saber Ice Atelier chat surface should use a lighter right-edge veil so the artwork does not look washed out.",
+  /data-dream-theme-id="preset-saber-ice-atelier"\][\s\S]{0,120}main\.main-surface\s*\{[\s\S]{0,300}rgb\(255 255 255 \/ \.04\)[\s\S]{0,80}transparent 94%/,
+  "Saber Ice Atelier chat surface should leave the right-edge character area clear instead of washing it out.",
 );
 assert.match(
   css,
@@ -201,6 +202,11 @@ assert.match(
 );
 assert.match(
   css,
+  /data-dream-theme-id="preset-saber-ice-atelier"\][\s\S]{0,260}\.dream-skin-home:has\(\.dream-skin-home-utility\) \.composer-surface-chrome,[\s\S]{0,260}\.dream-skin-home \.dream-skin-home-utility\s*\{[\s\S]{0,120}transform:\s*translateY\(48px\) !important;/,
+  "Saber Ice Atelier should lower the joined home composer near the bottom edge.",
+);
+assert.match(
+  css,
   /data-dream-theme-id="preset-saber-ice-atelier"\][\s\S]{0,260}\.dream-skin-home \.group\\\/home-suggestions \[class\*="grid-cols-"\]\s*\{[\s\S]{0,220}flex-direction:\s*column !important;[\s\S]{0,160}width:\s*720px !important;/,
   "Saber Ice Atelier should keep Codex's inner suggestion grid wide enough for four cards while stacking its children vertically.",
 );
@@ -213,6 +219,11 @@ assert.match(
   css,
   /data-dream-card-art-count="4"\][\s\S]{0,260}button\[data-dream-card-index\]\s*\{[\s\S]{0,260}max-width:\s*300px !important;[\s\S]{0,160}min-height:\s*58px !important;/,
   "Saber Ice Atelier home action cards should be narrow enough to form a compact vertical list.",
+);
+assert.match(
+  css,
+  /data-dream-card-art-count="4"\][\s\S]{0,260}button\[data-dream-card-index\]\s*\{[\s\S]{0,300}background:\s*rgb\(255 255 255 \/ \.86\) !important;/,
+  "Saber Ice Atelier home action cards should stay bright over the home poster.",
 );
 assert.match(
   css,
@@ -266,8 +277,13 @@ assert.match(
 );
 assert.match(
   css,
-  /\.dream-skin-card-art\s*\{[\s\S]{0,220}opacity:\s*\.32 !important;/,
-  "Generated card art should remain a subdued background layer behind the native text.",
+  /\.dream-skin-card-art\s*\{[\s\S]{0,220}opacity:\s*\.26 !important;[\s\S]{0,80}mix-blend-mode:\s*normal !important;/,
+  "Generated card art should stay light behind the native text.",
+);
+assert.match(
+  css,
+  /\.dream-skin-card-label\s*\{[\s\S]{0,140}right:\s*12px !important;[\s\S]{0,80}top:\s*9px !important;[\s\S]{0,80}bottom:\s*auto !important;/,
+  "Generated class labels should be restored to the top-right corner of each compact action card.",
 );
 assert.match(
   css,
@@ -276,8 +292,13 @@ assert.match(
 );
 assert.match(
   css,
-  /span:not\(:first-child\):not\(\.dream-skin-card-label\)\s*\{[\s\S]{0,440}font-size:\s*16px !important;/,
-  "Native suggestion wording should be promoted as the primary card content.",
+  /button\[data-dream-card-index\] > span:not\(:first-child\):not\(\.dream-skin-card-label\)\s*\{[\s\S]{0,520}color:\s*#2b82bd !important;/,
+  "Native suggestion wording should use an ice-blue primary card color.",
+);
+assert.match(
+  css,
+  /button\[data-dream-card-index\] > span:not\(:first-child\):not\(\.dream-skin-card-label\)\s*\{[\s\S]{0,560}font-size:\s*16px !important;/,
+  "Native suggestion wording should be promoted as ice-blue primary card content.",
 );
 assert.match(
   css,
@@ -285,10 +306,35 @@ assert.match(
   "Generated card art should replace the former CSS crest symbols.",
 );
 
+assert.equal(
+  saberPreset.sidebarEmblem,
+  undefined,
+  "Saber Ice Atelier should use its chat background artwork instead of a separate FSN sidebar emblem.",
+);
+assert.equal(
+  saberPreset.backgroundVariants?.length,
+  4,
+  "Saber Ice Atelier should ship daily-life full-body background variants for rotation.",
+);
+assert.deepEqual(
+  saberPreset.backgroundRotation,
+  { enabled: true, intervalMinutes: 10, mode: "random", includeDefault: true },
+  "Saber Ice Atelier should rotate between the standing default and daily-life variants every ten minutes.",
+);
 assert.match(
   css,
-  /#codex-dream-skin-sidebar-emblem\s*\{[\s\S]{0,300}pointer-events:\s*none;/,
-  "Saber Ice Atelier sidebar emblem must remain a non-interactive decoration.",
+  /aside\.app-shell-left-panel\s*\{[\s\S]{0,360}background-image:[\s\S]{0,260}var\(--dream-skin-art\) !important;[\s\S]{0,180}background-position:\s*center,\s*left center !important;/,
+  "Saber Ice Atelier sidebar should crop the left side of the chat background artwork.",
+);
+assert.match(
+  css,
+  /main\.main-surface:not\(\.dream-skin-home-shell\)\s*\{[\s\S]{0,360}background-image:[\s\S]{0,260}var\(--dream-skin-art\) !important;[\s\S]{0,180}background-position:\s*center,\s*var\(--ds-saber-task-art-position,\s*right center\) !important;/,
+  "Saber Ice Atelier task surface should shift the chat background artwork toward the right safe edge.",
+);
+assert.match(
+  css,
+  /main\.main-surface:not\(\.dream-skin-home-shell\)::before\s*\{[\s\S]{0,760}backdrop-filter:\s*blur\(5px\) saturate\(103%\);[\s\S]{0,320}mask-image:\s*linear-gradient/,
+  "Saber Ice Atelier should fade the central chat reading area into a softly blurred white veil.",
 );
 assert.match(
   template,
@@ -539,9 +585,21 @@ function createFixture(theme, {
     clearTimeout(id) { timers.delete(id); },
     cancelAnimationFrame() {},
   };
-  const payloadFor = (nextTheme, cssText = ".fixture { color: blue; }", homeArt = null, cardArt = [], sidebarEmblem = null, environmentCardArt = null, filePanelArt = null, reviewPanelArt = null, animatedOverlay = null) => template
+  const payloadFor = (
+    nextTheme,
+    cssText = ".fixture { color: blue; }",
+    homeArt = null,
+    cardArt = [],
+    sidebarEmblem = null,
+    environmentCardArt = null,
+    filePanelArt = null,
+    reviewPanelArt = null,
+    animatedOverlay = null,
+    backgroundVariants = [],
+  ) => template
     .replace("__DREAM_SKIN_CSS_JSON__", JSON.stringify(cssText))
     .replace("__DREAM_SKIN_ART_JSON__", JSON.stringify("data:image/png;base64,AA=="))
+    .replace("__DREAM_SKIN_BACKGROUND_VARIANT_JSON__", JSON.stringify(backgroundVariants))
     .replace("__DREAM_SKIN_HOME_ART_JSON__", JSON.stringify(homeArt))
     .replace("__DREAM_SKIN_CARD_ART_JSON__", JSON.stringify(cardArt))
     .replace("__DREAM_SKIN_SIDEBAR_EMBLEM_JSON__", JSON.stringify(sidebarEmblem))
@@ -613,6 +671,37 @@ assert.equal(homeArt.rootStyle.values.get("--dream-skin-art-position"), "82.00% 
 assert.equal(homeArt.rootStyle.values.get("--dream-skin-home-art-position"), "100.00% 50.00%");
 assert.equal(homeArt.window.__CODEX_DREAM_SKIN_STATE__.cleanup(), true);
 assert.deepEqual(homeArt.revokedUrls, ["blob:fixture-1", "blob:fixture-2"]);
+const backgroundRotationTheme = {
+  id: "background-rotation-contract",
+  appearance: "light",
+  art: { safeArea: "left", taskMode: "ambient" },
+  backgroundRotation: { enabled: true, intervalMinutes: 1, mode: "sequence", includeDefault: true },
+};
+const backgroundRotation = createFixture(backgroundRotationTheme);
+vm.runInNewContext(backgroundRotation.payloadFor(
+  backgroundRotationTheme,
+  ".fixture { color: blue; }",
+  null,
+  [],
+  null,
+  null,
+  null,
+  null,
+  null,
+  ["data:image/png;base64,AA==", "data:image/png;base64,AA=="],
+), backgroundRotation.context);
+assert.equal(backgroundRotation.rootStyle.values.get("--dream-skin-art"), 'url("blob:fixture-1")',
+  "Background rotation should start from the primary standing artwork.");
+assert.equal(backgroundRotation.attributes.get("data-dream-background-rotation"), "sequence");
+assert.equal(backgroundRotation.window.__CODEX_DREAM_SKIN_STATE__.activeBackgroundArtIndex, 0);
+assert.deepEqual(Array.from(backgroundRotation.window.__CODEX_DREAM_SKIN_STATE__.backgroundVariantUrls),
+  ["blob:fixture-2", "blob:fixture-3"]);
+backgroundRotation.flushTimers(Infinity);
+assert.equal(backgroundRotation.rootStyle.values.get("--dream-skin-art"), 'url("blob:fixture-2")',
+  "The background timer should advance to a full-body daily-life variant.");
+assert.equal(backgroundRotation.window.__CODEX_DREAM_SKIN_STATE__.activeBackgroundArtIndex, 1);
+assert.equal(backgroundRotation.window.__CODEX_DREAM_SKIN_STATE__.cleanup(), true);
+assert.deepEqual(backgroundRotation.revokedUrls, ["blob:fixture-1", "blob:fixture-2", "blob:fixture-3"]);
 const cardArtTheme = {
   id: "card-art-contract",
   appearance: "light",

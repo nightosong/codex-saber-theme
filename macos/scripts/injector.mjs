@@ -12,6 +12,8 @@ const SKIN_VERSION = "0.0.1";
 const LOOPBACK_HOSTS = new Set(["127.0.0.1", "localhost", "[::1]"]);
 const CDP_ID_PATTERN = /^[A-Za-z0-9._-]{1,200}$/;
 const MAX_ART_BYTES = 16 * 1024 * 1024;
+const MAX_BACKGROUND_VARIANT_COUNT = 8;
+const MAX_BACKGROUND_VARIANT_BYTES = 4 * 1024 * 1024;
 const MAX_CARD_ART_COUNT = 4;
 const MAX_CARD_ART_BYTES = 4 * 1024 * 1024;
 const MAX_SIDEBAR_EMBLEM_BYTES = 2 * 1024 * 1024;
@@ -354,13 +356,29 @@ async function loadTheme(themeDir) {
       return value;
     });
   })();
+  const backgroundVariantNames = (() => {
+    if (raw.backgroundVariants === undefined) return [];
+    if (!Array.isArray(raw.backgroundVariants) || raw.backgroundVariants.length > MAX_BACKGROUND_VARIANT_COUNT) {
+      throw new Error(`${configPath} has an invalid backgroundVariants field`);
+    }
+    const seen = new Set();
+    return raw.backgroundVariants.map((value, index) => {
+      const name = validateImageAssetName(value, `backgroundVariants[${index}]`);
+      if (name === raw.image || name === homeImageName || cardArtNames.includes(name) || seen.has(name)) {
+        throw new Error("Theme background variants must be unique and stay inside its theme directory");
+      }
+      seen.add(name);
+      return name;
+    });
+  })();
   const sidebarEmblemName = (() => {
     if (raw.sidebarEmblem === undefined) return null;
     const value = raw.sidebarEmblem;
     if (typeof value !== "string" || !value || /[\u0000-\u001f\u007f-\u009f\u2028\u2029]/u.test(value)) {
       throw new Error(`${configPath} has an invalid sidebarEmblem field`);
     }
-    if (path.basename(value) !== value || value === raw.image || value === homeImageName || cardArtNames.includes(value)) {
+    if (path.basename(value) !== value || value === raw.image || value === homeImageName || cardArtNames.includes(value)
+      || backgroundVariantNames.includes(value)) {
       throw new Error("Theme sidebar emblem must be unique and stay inside its theme directory");
     }
     const extension = path.extname(value).toLowerCase();
@@ -376,7 +394,7 @@ async function loadTheme(themeDir) {
       throw new Error(`${configPath} has an invalid environmentCardArt field`);
     }
     if (path.basename(value) !== value || value === raw.image || value === homeImageName
-      || cardArtNames.includes(value) || value === sidebarEmblemName) {
+      || cardArtNames.includes(value) || backgroundVariantNames.includes(value) || value === sidebarEmblemName) {
       throw new Error("Theme environment card art must be unique and stay inside its theme directory");
     }
     const extension = path.extname(value).toLowerCase();
@@ -392,7 +410,7 @@ async function loadTheme(themeDir) {
       throw new Error(`${configPath} has an invalid filePanelArt field`);
     }
     if (path.basename(value) !== value || value === raw.image || value === homeImageName || cardArtNames.includes(value)
-      || value === sidebarEmblemName || value === environmentCardArtName) {
+      || backgroundVariantNames.includes(value) || value === sidebarEmblemName || value === environmentCardArtName) {
       throw new Error("Theme file panel art must be unique and stay inside its theme directory");
     }
     const extension = path.extname(value).toLowerCase();
@@ -408,7 +426,7 @@ async function loadTheme(themeDir) {
       throw new Error(`${configPath} has an invalid reviewPanelArt field`);
     }
     if (path.basename(value) !== value || value === raw.image || value === homeImageName || cardArtNames.includes(value)
-      || value === sidebarEmblemName || value === environmentCardArtName || value === filePanelArtName) {
+      || backgroundVariantNames.includes(value) || value === sidebarEmblemName || value === environmentCardArtName || value === filePanelArtName) {
       throw new Error("Theme review panel art must be unique and stay inside its theme directory");
     }
     const extension = path.extname(value).toLowerCase();
@@ -424,7 +442,7 @@ async function loadTheme(themeDir) {
       throw new Error(`${configPath} has an invalid animatedOverlay field`);
     }
     if (path.basename(value) !== value || value === raw.image || value === homeImageName || cardArtNames.includes(value)
-      || value === sidebarEmblemName || value === environmentCardArtName || value === filePanelArtName
+      || backgroundVariantNames.includes(value) || value === sidebarEmblemName || value === environmentCardArtName || value === filePanelArtName
       || value === reviewPanelArtName) {
       throw new Error("Theme animated overlay must be unique and stay inside its theme directory");
     }
@@ -455,9 +473,23 @@ async function loadTheme(themeDir) {
     }
     return value;
   };
+  const bool = (value, name) => {
+    if (value === undefined) return undefined;
+    if (typeof value !== "boolean") {
+      throw new Error(`${configPath} has an invalid ${name} field`);
+    }
+    return value;
+  };
   const unit = (value, name) => {
     if (value === undefined) return undefined;
     if (typeof value !== "number" || !Number.isFinite(value) || value < 0 || value > 1) {
+      throw new Error(`${configPath} has an invalid ${name} field`);
+    }
+    return value;
+  };
+  const intervalMinutes = (value, name) => {
+    if (value === undefined) return undefined;
+    if (typeof value !== "number" || !Number.isFinite(value) || value < 1 || value > 24 * 60) {
       throw new Error(`${configPath} has an invalid ${name} field`);
     }
     return value;
@@ -487,6 +519,17 @@ async function loadTheme(themeDir) {
     focusX: unit(rawHomeArt.focusX, "homeArt.focusX"),
     focusY: unit(rawHomeArt.focusY, "homeArt.focusY"),
   };
+  if (raw.backgroundRotation !== undefined
+    && (!raw.backgroundRotation || typeof raw.backgroundRotation !== "object" || Array.isArray(raw.backgroundRotation))) {
+    throw new Error(`${configPath} has an invalid backgroundRotation field`);
+  }
+  const rawBackgroundRotation = raw.backgroundRotation || {};
+  const backgroundRotation = {
+    enabled: bool(rawBackgroundRotation.enabled, "backgroundRotation.enabled"),
+    intervalMinutes: intervalMinutes(rawBackgroundRotation.intervalMinutes, "backgroundRotation.intervalMinutes"),
+    mode: choice(rawBackgroundRotation.mode, "backgroundRotation.mode", ["random", "sequence"]),
+    includeDefault: bool(rawBackgroundRotation.includeDefault, "backgroundRotation.includeDefault"),
+  };
   const theme = {
     schemaVersion: 1,
     id: text(raw.id, "custom", 80, "id"),
@@ -499,6 +542,7 @@ async function loadTheme(themeDir) {
     quote: text(raw.quote, "MAKE SOMETHING WONDERFUL", 80, "quote"),
     image: raw.image,
     homeImage: homeImageName,
+    backgroundVariants: backgroundVariantNames,
     colorMode: rawColors ? "explicit" : "auto",
     explicitColorKeys: rawColors ? colorKeys.filter((key) => Object.hasOwn(rawColors, key)) : [],
     colors: {
@@ -520,6 +564,9 @@ async function loadTheme(themeDir) {
   }
   if (Object.values(homeArt).some((value) => value !== undefined)) {
     theme.homeArt = Object.fromEntries(Object.entries(homeArt).filter(([, value]) => value !== undefined));
+  }
+  if (Object.values(backgroundRotation).some((value) => value !== undefined)) {
+    theme.backgroundRotation = Object.fromEntries(Object.entries(backgroundRotation).filter(([, value]) => value !== undefined));
   }
   const requestedImagePath = path.join(assetsRoot, theme.image);
   let imagePath;
@@ -596,6 +643,43 @@ async function loadTheme(themeDir) {
         await homeImageHandle.close();
       }
     })();
+    const backgroundVariants = await Promise.all(backgroundVariantNames.map(async (name) => {
+      const requestedVariantPath = path.join(assetsRoot, name);
+      const variantPath = await fs.realpath(requestedVariantPath).catch((error) => {
+        if (error.code === "ENOENT") throw new Error(`Theme background variant is missing: ${requestedVariantPath}`);
+        throw error;
+      });
+      assertContainedPath(assetsRoot, variantPath, "Theme background variant");
+      const variantStat = await fs.stat(variantPath);
+      const variantExtension = path.extname(name).toLowerCase();
+      let variantHandle;
+      try {
+        variantHandle = await fs.open(variantPath, fsConstants.O_RDONLY | (fsConstants.O_NOFOLLOW ?? 0));
+      } catch (error) {
+        if (error.code === "ELOOP") throw new Error("Theme background variant changed into a symbolic link while loading");
+        throw error;
+      }
+      try {
+        const openedVariantStat = await variantHandle.stat();
+        if (
+          !variantStat.isFile()
+          || !openedVariantStat.isFile()
+          || variantStat.dev !== openedVariantStat.dev
+          || variantStat.ino !== openedVariantStat.ino
+          || openedVariantStat.size < 1
+          || openedVariantStat.size > MAX_BACKGROUND_VARIANT_BYTES
+        ) {
+          throw new Error(`Theme background variant must be a stable non-empty file no larger than ${MAX_BACKGROUND_VARIANT_BYTES} bytes`);
+        }
+        const bytes = await variantHandle.readFile();
+        if (bytes.length < 1 || bytes.length > MAX_BACKGROUND_VARIANT_BYTES) {
+          throw new Error(`Theme background variant must be a non-empty file no larger than ${MAX_BACKGROUND_VARIANT_BYTES} bytes`);
+        }
+        return { bytes, extension: variantExtension, name };
+      } finally {
+        await variantHandle.close();
+      }
+    }));
     const cardArt = await Promise.all(cardArtNames.map(async (name) => {
       const requestedCardPath = path.join(assetsRoot, name);
       const cardPath = await fs.realpath(requestedCardPath).catch((error) => {
@@ -808,6 +892,7 @@ async function loadTheme(themeDir) {
         await overlayHandle.close();
       }
     })();
+    theme.backgroundVariants = backgroundVariants.map((item) => item.name);
     theme.cardArt = cardArt.map((item) => item.name);
     if (homeImage) theme.homeImage = homeImage.name;
     if (sidebarEmblem) theme.sidebarEmblem = sidebarEmblem.name;
@@ -815,7 +900,10 @@ async function loadTheme(themeDir) {
     if (filePanelArt) theme.filePanelArt = filePanelArt.name;
     if (reviewPanelArt) theme.reviewPanelArt = reviewPanelArt.name;
     if (animatedOverlay) theme.animatedOverlay = animatedOverlay.name;
-    return { art, assetsRoot, extension, imagePath, theme, homeImage, cardArt, sidebarEmblem, environmentCardArt, filePanelArt, reviewPanelArt, animatedOverlay };
+    return {
+      art, assetsRoot, extension, imagePath, theme, homeImage, backgroundVariants, cardArt,
+      sidebarEmblem, environmentCardArt, filePanelArt, reviewPanelArt, animatedOverlay,
+    };
   } finally {
     await imageHandle.close();
   }
@@ -847,7 +935,10 @@ async function loadPayload(themeDir) {
     loadTheme(themeDir),
   ]);
   const { css, template } = staticAssets;
-  const { art, extension, theme, homeImage, cardArt, sidebarEmblem, environmentCardArt, filePanelArt, reviewPanelArt, animatedOverlay } = loaded;
+  const {
+    art, extension, theme, homeImage, backgroundVariants, cardArt, sidebarEmblem,
+    environmentCardArt, filePanelArt, reviewPanelArt, animatedOverlay,
+  } = loaded;
   const styleRevision = createHash("sha256").update(css).digest("hex").slice(0, 20);
   const artMetadata = readImageMetadata(art, extension);
   if (!artMetadata) {
@@ -871,6 +962,22 @@ async function loadPayload(themeDir) {
     theme.homeArtKey = createHash("sha256").update(homeImage.bytes).digest("hex").slice(0, 20);
     return `data:${homeImageMime};base64,${homeImage.bytes.toString("base64")}`;
   })();
+  const backgroundVariantMetadata = [];
+  const backgroundVariantDataUrls = backgroundVariants.map((item) => {
+    const metadata = readImageMetadata(item.bytes, item.extension);
+    if (!metadata) {
+      throw new Error(`Theme background variant is invalid: ${item.name}`);
+    }
+    backgroundVariantMetadata.push({ name: item.name, ...metadata });
+    const variantMime = item.extension === ".jpg" || item.extension === ".jpeg" ? "image/jpeg"
+      : item.extension === ".webp" ? "image/webp" : "image/png";
+    return `data:${variantMime};base64,${item.bytes.toString("base64")}`;
+  });
+  if (backgroundVariants.length) {
+    theme.backgroundVariantMetadata = backgroundVariantMetadata;
+    theme.backgroundVariantKeys = backgroundVariants
+      .map((item) => createHash("sha256").update(item.bytes).digest("hex").slice(0, 20));
+  }
   const cardArtDataUrls = cardArt.map((item) => {
     if (!readImageMetadata(item.bytes, item.extension)) {
       throw new Error(`Theme card art is invalid: ${item.name}`);
@@ -931,6 +1038,7 @@ async function loadPayload(themeDir) {
   const payload = template
     .replace("__DREAM_SKIN_CSS_JSON__", JSON.stringify(css))
     .replace("__DREAM_SKIN_ART_JSON__", JSON.stringify(artDataUrl))
+    .replace("__DREAM_SKIN_BACKGROUND_VARIANT_JSON__", JSON.stringify(backgroundVariantDataUrls))
     .replace("__DREAM_SKIN_HOME_ART_JSON__", JSON.stringify(homeImageDataUrl))
     .replace("__DREAM_SKIN_CARD_ART_JSON__", JSON.stringify(cardArtDataUrls))
     .replace("__DREAM_SKIN_SIDEBAR_EMBLEM_JSON__", JSON.stringify(sidebarEmblemDataUrl))
@@ -951,6 +1059,7 @@ async function loadPayload(themeDir) {
   return {
     imageBytes: art.length,
     homeImageBytes: homeImage?.bytes.length ?? 0,
+    backgroundVariantBytes: backgroundVariants.reduce((total, item) => total + item.bytes.length, 0),
     cardArtBytes: cardArt.reduce((total, item) => total + item.bytes.length, 0),
     sidebarEmblemBytes: sidebarEmblem?.bytes.length ?? 0,
     environmentCardArtBytes: environmentCardArt?.bytes.length ?? 0,
@@ -1364,6 +1473,8 @@ if (path.resolve(process.argv[1] || "") === path.resolve(scriptPath)) {
         themeName: loaded.theme.name,
         imageBytes: loaded.imageBytes,
         homeImageBytes: loaded.homeImageBytes,
+        backgroundVariantBytes: loaded.backgroundVariantBytes,
+        backgroundVariantCount: loaded.theme.backgroundVariants?.length ?? 0,
         cardArtBytes: loaded.cardArtBytes,
         cardArtCount: loaded.theme.cardArt?.length ?? 0,
         payloadBytes: Buffer.byteLength(loaded.payload),
