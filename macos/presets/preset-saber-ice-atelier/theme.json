@@ -10,13 +10,24 @@
   "quote": "MAKE SOMETHING WONDERFUL",
   "image": "background.png",
   "homeImage": "home-background.png",
+  "backgroundVariants": [
+    "background-side-sitting.webp",
+    "background-floor-sit-folded.webp",
+    "background-kneeling-seiza.webp",
+    "background-prone-reading.webp"
+  ],
+  "backgroundRotation": {
+    "enabled": true,
+    "intervalMinutes": 10,
+    "mode": "random",
+    "includeDefault": true
+  },
   "cardArt": [
     "card-archer.webp",
     "card-lancer.webp",
     "card-berserker.webp",
     "card-rider.webp"
   ],
-  "sidebarEmblem": "sidebar-emblem.png",
   "environmentCardArt": "environment-card-canopy.png",
   "filePanelArt": "file-panel-archer.png",
   "reviewPanelArt": "review-panel-rin.png",

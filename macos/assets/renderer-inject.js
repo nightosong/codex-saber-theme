@@ -1,4 +1,4 @@
-((cssText, artDataUrl, homeArtDataUrl, cardArtDataUrls, sidebarEmblemDataUrl, environmentCardArtDataUrl, filePanelArtDataUrl, reviewPanelArtDataUrl, animatedOverlayDataUrl, themeConfig) => {
+((cssText, artDataUrl, backgroundVariantDataUrls, homeArtDataUrl, cardArtDataUrls, sidebarEmblemDataUrl, environmentCardArtDataUrl, filePanelArtDataUrl, reviewPanelArtDataUrl, animatedOverlayDataUrl, themeConfig) => {
   const STATE_KEY = "__CODEX_DREAM_SKIN_STATE__";
   const DISABLED_KEY = "__CODEX_DREAM_SKIN_DISABLED__";
   const STYLE_ID = "codex-dream-skin-style";
@@ -15,6 +15,7 @@
     "data-dream-art-wide", "data-dream-art-safe", "data-dream-task-mode",
     "data-dream-art-safe-area", "data-dream-art-task-mode", "data-dream-art-aspect",
     "data-dream-art-ready", "data-dream-card-art-count",
+    "data-dream-background-rotation", "data-dream-background-index",
   ];
   const VERSION = __DREAM_SKIN_VERSION_JSON__;
   const STYLE_REVISION = __DREAM_SKIN_STYLE_REVISION_JSON__;
@@ -78,6 +79,9 @@
     return URL.createObjectURL(new Blob([bytes], { type: mime }));
   };
   const artUrl = objectUrlForDataUrl(artDataUrl);
+  const backgroundVariantUrls = (Array.isArray(backgroundVariantDataUrls) ? backgroundVariantDataUrls : [])
+    .map(objectUrlForDataUrl)
+    .filter(Boolean);
   const homeArtUrl = objectUrlForDataUrl(homeArtDataUrl) || artUrl;
   const cardArtUrls = (Array.isArray(cardArtDataUrls) ? cardArtDataUrls : [])
     .slice(0, 4)
@@ -93,6 +97,7 @@
   if (previous?.rootObserver) previous.rootObserver.disconnect();
   if (previous?.resizeObserver) previous.resizeObserver.disconnect();
   if (previous?.timer) clearInterval(previous.timer);
+  if (previous?.backgroundRotationTimer) clearTimeout(previous.backgroundRotationTimer);
   if (previous?.scheduler?.timeout) clearTimeout(previous.scheduler.timeout);
   if (previous?.scheduler?.frame != null && typeof cancelAnimationFrame === "function") {
     cancelAnimationFrame(previous.scheduler.frame);
@@ -130,6 +135,71 @@
       node.textContent = value;
       metrics.textWrites += 1;
     }
+  };
+
+  const rawBackgroundRotation = THEME.backgroundRotation && typeof THEME.backgroundRotation === "object"
+    ? THEME.backgroundRotation : {};
+  const backgroundRotationIntervalMinutes = Number.isFinite(rawBackgroundRotation.intervalMinutes)
+    ? Math.min(24 * 60, Math.max(1, rawBackgroundRotation.intervalMinutes)) : 60;
+  const backgroundRotation = {
+    enabled: rawBackgroundRotation.enabled === true && backgroundVariantUrls.length > 0,
+    intervalMs: backgroundRotationIntervalMinutes * 60 * 1000,
+    intervalMinutes: backgroundRotationIntervalMinutes,
+    mode: rawBackgroundRotation.mode === "sequence" ? "sequence" : "random",
+    includeDefault: rawBackgroundRotation.includeDefault !== false,
+  };
+  const backgroundArtUrls = [
+    ...(backgroundRotation.includeDefault && artUrl ? [artUrl] : []),
+    ...backgroundVariantUrls,
+  ];
+  if (!backgroundArtUrls.length && artUrl) backgroundArtUrls.push(artUrl);
+  let activeBackgroundArtIndex = 0;
+  let activeArtUrl = backgroundRotation.enabled
+    ? backgroundArtUrls[activeBackgroundArtIndex] || artUrl
+    : artUrl;
+  let backgroundRotationTimer = null;
+  const selectNextBackgroundArtIndex = () => {
+    if (!backgroundRotation.enabled || backgroundArtUrls.length <= 1) return activeBackgroundArtIndex;
+    if (backgroundRotation.mode === "sequence") {
+      return (activeBackgroundArtIndex + 1) % backgroundArtUrls.length;
+    }
+    const optionCount = backgroundArtUrls.length - 1;
+    const rolled = Math.min(optionCount - 1, Math.floor(Math.random() * optionCount));
+    return rolled >= activeBackgroundArtIndex ? rolled + 1 : rolled;
+  };
+  const applyBackgroundArt = (root, { advance = false } = {}) => {
+    if (backgroundRotation.enabled && backgroundArtUrls.length > 1 && advance) {
+      activeBackgroundArtIndex = selectNextBackgroundArtIndex();
+    }
+    activeArtUrl = backgroundRotation.enabled
+      ? backgroundArtUrls[activeBackgroundArtIndex] || artUrl
+      : artUrl;
+    if (activeArtUrl) setStyleProperty(root, "--dream-skin-art", `url("${activeArtUrl}")`);
+    setAttribute(root, "data-dream-background-rotation", backgroundRotation.enabled ? backgroundRotation.mode : "off");
+    setAttribute(root, "data-dream-background-index", backgroundRotation.enabled ? activeBackgroundArtIndex : 0);
+    const state = window[STATE_KEY];
+    if (state?.installToken === installToken) {
+      state.activeBackgroundArtIndex = backgroundRotation.enabled ? activeBackgroundArtIndex : 0;
+      state.activeBackgroundArtUrl = activeArtUrl;
+    }
+  };
+  const scheduleBackgroundRotation = () => {
+    if (backgroundRotationTimer) clearTimeout(backgroundRotationTimer);
+    if (!backgroundRotation.enabled || backgroundArtUrls.length <= 1) {
+      const state = window[STATE_KEY];
+      if (state?.installToken === installToken) state.backgroundRotationTimer = null;
+      return;
+    }
+    backgroundRotationTimer = setTimeout(() => {
+      backgroundRotationTimer = null;
+      if (!window[DISABLED_KEY]) {
+        const root = document.documentElement;
+        if (root) applyBackgroundArt(root, { advance: true });
+        scheduleBackgroundRotation();
+      }
+    }, backgroundRotation.intervalMs);
+    const state = window[STATE_KEY];
+    if (state?.installToken === installToken) state.backgroundRotationTimer = backgroundRotationTimer;
   };
 
   const parseRgb = (value) => {
@@ -613,7 +683,7 @@
     const shell = resolvedShell();
     setAttribute(root, SHELL_ATTR, shell);
     setAttribute(root, THEME_ATTR, THEME.id || "custom");
-    setStyleProperty(root, "--dream-skin-art", `url("${artUrl}")`);
+    applyBackgroundArt(root);
     setStyleProperty(root, "--dream-skin-home-art", `url("${homeArtUrl}")`);
     setAttribute(root, "data-dream-card-art-count", cardArtUrls.length);
     for (let index = 0; index < 4; index += 1) {
@@ -894,6 +964,7 @@
     state?.rootObserver?.disconnect();
     state?.resizeObserver?.disconnect();
     if (state?.timer) clearInterval(state.timer);
+    if (state?.backgroundRotationTimer) clearTimeout(state.backgroundRotationTimer);
     if (state?.scheduler?.timeout) clearTimeout(state.scheduler.timeout);
     if (state?.scheduler?.frame != null && typeof cancelAnimationFrame === "function") {
       cancelAnimationFrame(state.scheduler.frame);
@@ -915,6 +986,7 @@
     if (state?.artUrl) URL.revokeObjectURL(state.artUrl);
     if (state?.homeArtUrl && state.homeArtUrl !== state.artUrl) URL.revokeObjectURL(state.homeArtUrl);
     for (const url of state?.cardArtUrls ?? []) URL.revokeObjectURL(url);
+    for (const url of state?.backgroundVariantUrls ?? []) URL.revokeObjectURL(url);
     if (state?.sidebarEmblemUrl) URL.revokeObjectURL(state.sidebarEmblemUrl);
     if (state?.environmentCardArtUrl) URL.revokeObjectURL(state.environmentCardArtUrl);
     if (state?.filePanelArtUrl) URL.revokeObjectURL(state.filePanelArtUrl);
@@ -1045,6 +1117,7 @@
     rootObserver,
     resizeObserver,
     timer: null,
+    backgroundRotationTimer: null,
     scheduler,
     resizeHandler,
     mediaQuery,
@@ -1056,6 +1129,10 @@
     resizeTimer,
     resizing,
     artUrl,
+    activeBackgroundArtIndex: backgroundRotation.enabled ? activeBackgroundArtIndex : 0,
+    activeBackgroundArtUrl: activeArtUrl,
+    backgroundVariantUrls,
+    backgroundRotation,
     homeArtUrl,
     cardArtUrls,
     sidebarEmblemUrl,
@@ -1079,6 +1156,7 @@
     URL.revokeObjectURL(previous.homeArtUrl);
   }
   for (const url of previous?.cardArtUrls ?? []) URL.revokeObjectURL(url);
+  for (const url of previous?.backgroundVariantUrls ?? []) URL.revokeObjectURL(url);
   if (previous?.sidebarEmblemUrl && previous.sidebarEmblemUrl !== sidebarEmblemUrl) {
     URL.revokeObjectURL(previous.sidebarEmblemUrl);
   }
@@ -1111,6 +1189,7 @@
   }
   const timer = setInterval(() => ensure({ root: false, route: true, layout: false }), 4000);
   window[STATE_KEY].timer = timer;
+  scheduleBackgroundRotation();
   window.addEventListener("resize", resizeHandler, { passive: true });
   if (mediaHandler && mediaQuery) {
     mediaQuery.addEventListener("change", mediaHandler);
@@ -1141,4 +1220,4 @@
     shell: resolvedShell(),
     analysis: artAnalysis,
   };
-})(__DREAM_SKIN_CSS_JSON__, __DREAM_SKIN_ART_JSON__, __DREAM_SKIN_HOME_ART_JSON__, __DREAM_SKIN_CARD_ART_JSON__, __DREAM_SKIN_SIDEBAR_EMBLEM_JSON__, __DREAM_SKIN_ENVIRONMENT_CARD_ART_JSON__, __DREAM_SKIN_FILE_PANEL_ART_JSON__, __DREAM_SKIN_REVIEW_PANEL_ART_JSON__, __DREAM_SKIN_ANIMATED_OVERLAY_JSON__, __DREAM_SKIN_THEME_JSON__)
+})(__DREAM_SKIN_CSS_JSON__, __DREAM_SKIN_ART_JSON__, __DREAM_SKIN_BACKGROUND_VARIANT_JSON__, __DREAM_SKIN_HOME_ART_JSON__, __DREAM_SKIN_CARD_ART_JSON__, __DREAM_SKIN_SIDEBAR_EMBLEM_JSON__, __DREAM_SKIN_ENVIRONMENT_CARD_ART_JSON__, __DREAM_SKIN_FILE_PANEL_ART_JSON__, __DREAM_SKIN_REVIEW_PANEL_ART_JSON__, __DREAM_SKIN_ANIMATED_OVERLAY_JSON__, __DREAM_SKIN_THEME_JSON__)

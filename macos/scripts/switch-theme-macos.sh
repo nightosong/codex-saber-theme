@@ -72,6 +72,7 @@ keep_theme_asset() {
     const assets = [
       theme.image,
       ...(typeof theme.homeImage === "string" && theme.homeImage !== theme.image ? [theme.homeImage] : []),
+      ...(Array.isArray(theme.backgroundVariants) ? theme.backgroundVariants : []),
       ...(Array.isArray(theme.cardArt) ? theme.cardArt : []),
       ...(typeof theme.sidebarEmblem === "string" ? [theme.sidebarEmblem] : []),
       ...(typeof theme.environmentCardArt === "string" ? [theme.environmentCardArt] : []),

@@ -1224,6 +1224,7 @@ html.codex-dream-skin[data-dream-theme-id="saber-blue-atelier"] #codex-dream-ski
    small lower-right accent; text, cards, and controls retain first priority. */
 html.codex-dream-skin[data-dream-theme-id="preset-saber-ice-atelier"] {
   color-scheme: light !important;
+  --ds-saber-task-art-position: 42% center;
   --ds-bg: #eef7ff;
   --ds-panel: #ffffff;
   --ds-panel-2: #f4faff;
@@ -1283,6 +1284,17 @@ html.codex-dream-skin[data-dream-theme-id="preset-saber-ice-atelier"][data-dream
   background-size: auto 90% !important;
 }
 
+html.codex-dream-skin[data-dream-theme-id="preset-saber-ice-atelier"]:is(
+  [data-dream-task-mode="ambient"], [data-dream-art-task-mode="ambient"],
+  [data-dream-task-mode="banner"], [data-dream-art-task-mode="banner"]
+)[data-dream-art-wide="true"]:has(main.main-surface:not(.dream-skin-home-shell)) body {
+  background-image: var(--dream-skin-art) !important;
+  background-position: var(--ds-saber-task-art-position, right center) !important;
+  background-size: max(100vw, 177.778vh) auto !important;
+  background-repeat: no-repeat !important;
+  background-attachment: fixed !important;
+}
+
 html.codex-dream-skin[data-dream-theme-id="preset-saber-ice-atelier"][data-dream-art-wide="true"]:has(main.main-surface.dream-skin-home-shell) body {
   background-position: var(--dream-skin-home-art-position, right center) !important;
   background-size: cover !important;
@@ -1321,25 +1333,61 @@ html.codex-dream-skin[data-dream-theme-id="preset-saber-ice-atelier"] aside.app-
   color: var(--ds-muted) !important;
 }
 
-/* Decorative only: the source's white field blends into the white sidebar,
-   leaving a quiet command-seal accent in its lower unused area. */
-html.codex-dream-skin[data-dream-theme-id="preset-saber-ice-atelier"] #codex-dream-skin-sidebar-emblem {
-  position: fixed;
-  left: 18px;
-  bottom: 52px;
-  z-index: 1;
-  width: min(280px, calc(100vw - 38px));
-  height: min(218px, calc((100vw - 38px) * .7786));
-  background: var(--dream-skin-sidebar-emblem) center / contain no-repeat;
-  mix-blend-mode: multiply;
-  opacity: .18;
-  pointer-events: none;
+html.codex-dream-skin[data-dream-theme-id="preset-saber-ice-atelier"]:is(
+  [data-dream-task-mode="ambient"], [data-dream-art-task-mode="ambient"],
+  [data-dream-task-mode="banner"], [data-dream-art-task-mode="banner"]
+)[data-dream-art-wide="true"]:has(main.main-surface:not(.dream-skin-home-shell))
+  aside.app-shell-left-panel {
+  background-color: rgb(255 255 255 / .78) !important;
+  background-image:
+    linear-gradient(90deg, rgb(255 255 255 / .50), rgb(255 255 255 / .78) 86%, rgb(255 255 255 / .88)),
+    var(--dream-skin-art) !important;
+  background-position: center, left center !important;
+  background-size: 100% 100%, max(100vw, 177.778vh) auto !important;
+  background-repeat: no-repeat !important;
+  background-attachment: scroll, fixed !important;
+  border-right: 1px solid rgb(111 174 220 / .18) !important;
+  box-shadow: 12px 0 28px rgb(68 112 146 / .06) !important;
+  backdrop-filter: blur(8px) saturate(104%) !important;
 }
 
-@media (max-height: 820px) {
-  html.codex-dream-skin[data-dream-theme-id="preset-saber-ice-atelier"] #codex-dream-skin-sidebar-emblem {
-    display: none;
-  }
+html.codex-dream-skin[data-dream-theme-id="preset-saber-ice-atelier"]:is(
+  [data-dream-task-mode="ambient"], [data-dream-art-task-mode="ambient"],
+  [data-dream-task-mode="banner"], [data-dream-art-task-mode="banner"]
+)[data-dream-art-wide="true"]:has(main.main-surface:not(.dream-skin-home-shell))
+  main.main-surface:not(.dream-skin-home-shell) {
+  background-color: transparent !important;
+  background-image:
+    linear-gradient(90deg,
+      rgb(255 255 255 / .90),
+      rgb(255 255 255 / .78) 48%,
+      rgb(255 255 255 / .28) 66%,
+      rgb(255 255 255 / .04) 82%,
+      transparent 96%),
+    var(--dream-skin-art) !important;
+  background-position: center, var(--ds-saber-task-art-position, right center) !important;
+  background-size: 100% 100%, max(100vw, 177.778vh) auto !important;
+  background-repeat: no-repeat !important;
+  background-attachment: scroll, fixed !important;
+}
+
+html.codex-dream-skin[data-dream-theme-id="preset-saber-ice-atelier"]:is(
+  [data-dream-task-mode="ambient"], [data-dream-art-task-mode="ambient"],
+  [data-dream-task-mode="banner"], [data-dream-art-task-mode="banner"]
+)[data-dream-art-wide="true"]:has(main.main-surface:not(.dream-skin-home-shell))
+  main.main-surface:not(.dream-skin-home-shell)::before {
+  content: "" !important;
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 38% 45%, rgb(255 255 255 / .90), rgb(255 255 255 / .80) 34%, rgb(255 255 255 / .34) 56%, transparent 74%),
+    linear-gradient(90deg, rgb(255 255 255 / .78), rgb(255 255 255 / .84) 40%, rgb(255 255 255 / .34) 58%, rgb(255 255 255 / .06) 76%, transparent 88%);
+  -webkit-backdrop-filter: blur(5px) saturate(103%);
+  backdrop-filter: blur(5px) saturate(103%);
+  -webkit-mask-image: linear-gradient(90deg, #000 0%, #000 56%, rgb(0 0 0 / .40) 70%, transparent 86%);
+  mask-image: linear-gradient(90deg, #000 0%, #000 56%, rgb(0 0 0 / .40) 70%, transparent 86%);
 }
 
 html.codex-dream-skin[data-dream-theme-id="preset-saber-ice-atelier"] .dream-skin-environment-card {
@@ -1421,7 +1469,7 @@ html.codex-dream-skin[data-dream-theme-id="preset-saber-ice-atelier"] aside.app-
 }
 
 html.codex-dream-skin[data-dream-theme-id="preset-saber-ice-atelier"] main.main-surface {
-  background: linear-gradient(90deg, rgb(255 255 255 / .96), rgb(255 255 255 / .82) 60%, rgb(255 255 255 / .10)) !important;
+  background: linear-gradient(90deg, rgb(255 255 255 / .94), rgb(255 255 255 / .76) 54%, rgb(255 255 255 / .04) 78%, transparent 94%) !important;
 }
 
 html.codex-dream-skin[data-dream-theme-id="preset-saber-ice-atelier"] main.main-surface.dream-skin-home-shell {
@@ -1484,6 +1532,13 @@ html.codex-dream-skin[data-dream-theme-id="preset-saber-ice-atelier"] .dream-ski
   background: rgb(255 255 255 / .92) !important;
   box-shadow: 0 12px 28px rgb(68 112 146 / .12), inset 0 1px #ffffff !important;
   backdrop-filter: none !important;
+}
+
+html.codex-dream-skin[data-dream-theme-id="preset-saber-ice-atelier"]
+  .dream-skin-home:has(.dream-skin-home-utility) .composer-surface-chrome,
+html.codex-dream-skin[data-dream-theme-id="preset-saber-ice-atelier"]
+  .dream-skin-home .dream-skin-home-utility {
+  transform: translateY(48px) !important;
 }
 
 html.codex-dream-skin[data-dream-theme-id="preset-saber-ice-atelier"]
@@ -1957,8 +2012,8 @@ html.codex-dream-skin[data-dream-theme-id="preset-saber-ice-atelier"][data-dream
 
 html.codex-dream-skin[data-dream-theme-id="preset-saber-ice-atelier"][data-dream-card-art-count="4"]
   .dream-skin-home .group\/home-suggestions .dream-skin-card-art {
-  opacity: .32 !important;
-  mix-blend-mode: multiply !important;
+  opacity: .26 !important;
+  mix-blend-mode: normal !important;
 }
 
 html.codex-dream-skin[data-dream-theme-id="preset-saber-ice-atelier"][data-dream-card-art-count="4"]
@@ -2002,13 +2057,14 @@ html.codex-dream-skin[data-dream-theme-id="preset-saber-ice-atelier"][data-dream
   border-radius: 0 !important;
   background: transparent !important;
   box-shadow: none !important;
-  color: #21394c !important;
+  color: #2b82bd !important;
   font-family: inherit !important;
   font-size: 16px !important;
   font-style: normal !important;
   font-weight: 650 !important;
   line-height: 1.45 !important;
   text-align: left !important;
+  text-shadow: 0 1px rgb(255 255 255 / .92) !important;
 }
 
 html.codex-dream-skin[data-dream-theme-id="preset-saber-ice-atelier"][data-dream-card-art-count="4"]
@@ -2137,24 +2193,37 @@ html.codex-dream-skin[data-dream-theme-id="preset-saber-ice-atelier"][data-dream
   min-height: 58px !important;
   flex: 0 0 auto !important;
   border-radius: 10px !important;
-  background: rgb(255 255 255 / .76) !important;
-  box-shadow: 0 6px 16px rgb(68 112 146 / .07), inset 0 1px rgb(255 255 255 / .72) !important;
+  background: rgb(255 255 255 / .86) !important;
+  box-shadow: 0 6px 14px rgb(68 112 146 / .05), inset 0 1px rgb(255 255 255 / .86) !important;
 }
 
 html.codex-dream-skin[data-dream-theme-id="preset-saber-ice-atelier"][data-dream-card-art-count="4"]
   .dream-skin-home .group\/home-suggestions .dream-skin-card-native-copy {
-  inset: 10px 13px auto 14px !important;
+  inset: 13px 76px auto 14px !important;
+  color: #2b82bd !important;
   font-size: 11px !important;
   font-weight: 650 !important;
   line-height: 1.28 !important;
+  text-shadow: 0 1px rgb(255 255 255 / .92) !important;
 }
 
 html.codex-dream-skin[data-dream-theme-id="preset-saber-ice-atelier"][data-dream-card-art-count="4"]
   .dream-skin-home .group\/home-suggestions .dream-skin-card-label {
-  left: 14px !important;
-  bottom: 8px !important;
+  left: auto !important;
+  right: 12px !important;
+  top: 9px !important;
+  bottom: auto !important;
+  display: block !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: rgb(62 114 149 / .72) !important;
   font-size: 10px !important;
-  opacity: .82 !important;
+  font-style: normal !important;
+  font-weight: 600 !important;
+  line-height: 1 !important;
+  opacity: .92 !important;
 }
 
 @media (max-width: 900px) {
