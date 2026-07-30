@@ -1,4 +1,4 @@
-((cssText, artDataUrl, cardArtDataUrls, sidebarEmblemDataUrl, environmentCardArtDataUrl, filePanelArtDataUrl, reviewPanelArtDataUrl, animatedOverlayDataUrl, themeConfig) => {
+((cssText, artDataUrl, homeArtDataUrl, cardArtDataUrls, sidebarEmblemDataUrl, environmentCardArtDataUrl, filePanelArtDataUrl, reviewPanelArtDataUrl, animatedOverlayDataUrl, themeConfig) => {
   const STATE_KEY = "__CODEX_DREAM_SKIN_STATE__";
   const DISABLED_KEY = "__CODEX_DREAM_SKIN_DISABLED__";
   const STYLE_ID = "codex-dream-skin-style";
@@ -20,6 +20,7 @@
   const STYLE_REVISION = __DREAM_SKIN_STYLE_REVISION_JSON__;
   const THEME = themeConfig && typeof themeConfig === "object" ? themeConfig : {};
   const ART = THEME.art && typeof THEME.art === "object" ? THEME.art : {};
+  const HOME_ART = THEME.homeArt && typeof THEME.homeArt === "object" ? THEME.homeArt : {};
   const ART_METADATA = THEME.artMetadata && typeof THEME.artMetadata === "object"
     ? THEME.artMetadata : null;
   const CARD_ART_LABELS = ["Archer", "Lancer", "Berserker", "Rider"];
@@ -32,6 +33,7 @@
     "--ds-text-rgb", "--ds-muted-rgb", "--ds-line-rgb",
     "--dream-art-focus-x", "--dream-art-focus-y", "--dream-art-position",
     "--dream-skin-focus-x", "--dream-skin-focus-y", "--dream-skin-art-position",
+    "--dream-skin-home-art", "--dream-skin-home-art-position",
     "--dream-skin-name", "--dream-skin-tagline", "--dream-skin-project-prefix",
     "--dream-skin-project-label", "--dream-skin-card-art-1", "--dream-skin-card-art-2",
     "--dream-skin-card-art-3", "--dream-skin-card-art-4", "--dream-skin-sidebar-emblem",
@@ -76,6 +78,7 @@
     return URL.createObjectURL(new Blob([bytes], { type: mime }));
   };
   const artUrl = objectUrlForDataUrl(artDataUrl);
+  const homeArtUrl = objectUrlForDataUrl(homeArtDataUrl) || artUrl;
   const cardArtUrls = (Array.isArray(cardArtDataUrls) ? cardArtDataUrls : [])
     .slice(0, 4)
     .map(objectUrlForDataUrl)
@@ -404,6 +407,11 @@
     setStyleProperty(root, "--dream-skin-focus-x", focusXValue);
     setStyleProperty(root, "--dream-skin-focus-y", focusYValue);
     setStyleProperty(root, "--dream-skin-art-position", `${focusXValue} ${focusYValue}`);
+    const homeFocusX = typeof HOME_ART.focusX === "number" ? HOME_ART.focusX : focusX;
+    const homeFocusY = typeof HOME_ART.focusY === "number" ? HOME_ART.focusY : focusY;
+    const homeFocusXValue = `${(clamp(homeFocusX, 0, 1) * 100).toFixed(2)}%`;
+    const homeFocusYValue = `${(clamp(homeFocusY, 0, 1) * 100).toFixed(2)}%`;
+    setStyleProperty(root, "--dream-skin-home-art-position", `${homeFocusXValue} ${homeFocusYValue}`);
   };
 
   const analyzeArt = () => new Promise((resolve) => {
@@ -606,6 +614,7 @@
     setAttribute(root, SHELL_ATTR, shell);
     setAttribute(root, THEME_ATTR, THEME.id || "custom");
     setStyleProperty(root, "--dream-skin-art", `url("${artUrl}")`);
+    setStyleProperty(root, "--dream-skin-home-art", `url("${homeArtUrl}")`);
     setAttribute(root, "data-dream-card-art-count", cardArtUrls.length);
     for (let index = 0; index < 4; index += 1) {
       const value = cardArtUrls[index] ? `url("${cardArtUrls[index]}")` : "none";
@@ -862,6 +871,7 @@
     document.documentElement?.removeAttribute(SHELL_ATTR);
     for (const name of ART_ATTRS) document.documentElement?.removeAttribute(name);
     document.documentElement?.style.removeProperty("--dream-skin-art");
+    document.documentElement?.style.removeProperty("--dream-skin-home-art");
     for (const name of THEME_VARIABLES) document.documentElement?.style.removeProperty(name);
     document.querySelectorAll(".dream-skin-home").forEach((node) => node.classList.remove("dream-skin-home"));
     document.querySelectorAll(".dream-skin-home-shell").forEach((node) => node.classList.remove("dream-skin-home-shell"));
@@ -903,6 +913,7 @@
       document.removeEventListener("click", state.sidebarNavigationHandler, true);
     }
     if (state?.artUrl) URL.revokeObjectURL(state.artUrl);
+    if (state?.homeArtUrl && state.homeArtUrl !== state.artUrl) URL.revokeObjectURL(state.homeArtUrl);
     for (const url of state?.cardArtUrls ?? []) URL.revokeObjectURL(url);
     if (state?.sidebarEmblemUrl) URL.revokeObjectURL(state.sidebarEmblemUrl);
     if (state?.environmentCardArtUrl) URL.revokeObjectURL(state.environmentCardArtUrl);
@@ -1045,6 +1056,7 @@
     resizeTimer,
     resizing,
     artUrl,
+    homeArtUrl,
     cardArtUrls,
     sidebarEmblemUrl,
     environmentCardArtUrl,
@@ -1063,6 +1075,9 @@
   ensure({ layout: !previous || !document.getElementById(CHROME_ID) });
   metrics.firstEnsureMs = Number((now() - firstEnsureStartedAt).toFixed(3));
   if (previous?.artUrl && previous.artUrl !== artUrl) URL.revokeObjectURL(previous.artUrl);
+  if (previous?.homeArtUrl && previous.homeArtUrl !== homeArtUrl && previous.homeArtUrl !== previous.artUrl) {
+    URL.revokeObjectURL(previous.homeArtUrl);
+  }
   for (const url of previous?.cardArtUrls ?? []) URL.revokeObjectURL(url);
   if (previous?.sidebarEmblemUrl && previous.sidebarEmblemUrl !== sidebarEmblemUrl) {
     URL.revokeObjectURL(previous.sidebarEmblemUrl);
@@ -1126,4 +1141,4 @@
     shell: resolvedShell(),
     analysis: artAnalysis,
   };
-})(__DREAM_SKIN_CSS_JSON__, __DREAM_SKIN_ART_JSON__, __DREAM_SKIN_CARD_ART_JSON__, __DREAM_SKIN_SIDEBAR_EMBLEM_JSON__, __DREAM_SKIN_ENVIRONMENT_CARD_ART_JSON__, __DREAM_SKIN_FILE_PANEL_ART_JSON__, __DREAM_SKIN_REVIEW_PANEL_ART_JSON__, __DREAM_SKIN_ANIMATED_OVERLAY_JSON__, __DREAM_SKIN_THEME_JSON__)
+})(__DREAM_SKIN_CSS_JSON__, __DREAM_SKIN_ART_JSON__, __DREAM_SKIN_HOME_ART_JSON__, __DREAM_SKIN_CARD_ART_JSON__, __DREAM_SKIN_SIDEBAR_EMBLEM_JSON__, __DREAM_SKIN_ENVIRONMENT_CARD_ART_JSON__, __DREAM_SKIN_FILE_PANEL_ART_JSON__, __DREAM_SKIN_REVIEW_PANEL_ART_JSON__, __DREAM_SKIN_ANIMATED_OVERLAY_JSON__, __DREAM_SKIN_THEME_JSON__)

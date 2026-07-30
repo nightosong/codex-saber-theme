@@ -570,9 +570,9 @@ html.codex-dream-skin .dream-skin-home {
   border: 1px solid rgb(var(--ds-accent-rgb) / .30) !important;
   border-radius: 22px !important;
   background-color: var(--ds-panel) !important;
-  background-image: var(--dream-skin-art) !important;
+  background-image: var(--dream-skin-home-art, var(--dream-skin-art)) !important;
   background-repeat: no-repeat !important;
-  background-position: var(--ds-art-position) !important;
+  background-position: var(--dream-skin-home-art-position, var(--ds-art-position)) !important;
   background-size: cover !important;
   box-shadow: 0 16px 38px rgb(var(--ds-bg-rgb) / .30) !important;
 }
@@ -766,8 +766,8 @@ html.codex-dream-skin .composer-surface-chrome::before { content: none !importan
 /* A wide image can carry the home screen too. The native hero remains live,
    but the artwork is painted once on the window instead of repeated in a card. */
 html.codex-dream-skin[data-dream-art-wide="true"]:has(main.main-surface.dream-skin-home-shell) body {
-  background-image: var(--dream-skin-art) !important;
-  background-position: var(--ds-art-position) !important;
+  background-image: var(--dream-skin-home-art, var(--dream-skin-art)) !important;
+  background-position: var(--dream-skin-home-art-position, var(--ds-art-position)) !important;
   background-size: cover !important;
   background-repeat: no-repeat !important;
   background-attachment: fixed !important;
@@ -1243,29 +1243,29 @@ html.codex-dream-skin[data-dream-theme-id="preset-saber-ice-atelier"] {
   --ds-secondary-rgb: 120 185 231;
   --ds-highlight-rgb: 118 153 212;
   --ds-hero-scrim: linear-gradient(90deg,
-    rgb(255 255 255 / .96),
-    rgb(255 255 255 / .90) 52%,
-    rgb(255 255 255 / .48) 78%,
-    rgb(255 255 255 / .12));
+    rgb(255 255 255 / .92),
+    rgb(255 255 255 / .80) 52%,
+    rgb(255 255 255 / .34) 78%,
+    rgb(255 255 255 / .06));
   --ds-task-shade: linear-gradient(90deg,
-    rgb(255 255 255 / .94),
-    rgb(255 255 255 / .80) 62%,
-    rgb(255 255 255 / .28));
+    rgb(255 255 255 / .88),
+    rgb(255 255 255 / .62) 62%,
+    rgb(255 255 255 / .12));
   --ds-task-fade: linear-gradient(180deg,
-    rgb(255 255 255 / .50),
-    rgb(255 255 255 / .70) 68%,
-    rgb(255 255 255 / .94));
-  --ds-immersive-edge: rgb(255 255 255 / .94);
-  --ds-immersive-mid: rgb(255 255 255 / .84);
-  --ds-immersive-far: rgb(255 255 255 / .34);
-  --ds-immersive-sidebar: rgb(255 255 255 / .94);
-  --ds-task-immersive-sidebar: rgb(255 255 255 / .96);
-  --ds-immersive-composer: rgb(255 255 255 / .92);
-  --ds-immersive-composer-solid: rgb(255 255 255 / .98);
+    rgb(255 255 255 / .32),
+    rgb(255 255 255 / .50) 68%,
+    rgb(255 255 255 / .82));
+  --ds-immersive-edge: rgb(255 255 255 / .90);
+  --ds-immersive-mid: rgb(255 255 255 / .70);
+  --ds-immersive-far: rgb(255 255 255 / .16);
+  --ds-immersive-sidebar: rgb(255 255 255 / .90);
+  --ds-task-immersive-sidebar: rgb(255 255 255 / .92);
+  --ds-immersive-composer: rgb(255 255 255 / .88);
+  --ds-immersive-composer-solid: rgb(255 255 255 / .96);
   --ds-immersive-line: rgb(111 174 220 / .30);
-  --ds-task-immersive-edge: rgb(255 255 255 / .96);
-  --ds-task-immersive-mid: rgb(255 255 255 / .86);
-  --ds-task-immersive-far: rgb(255 255 255 / .44);
+  --ds-task-immersive-edge: rgb(255 255 255 / .90);
+  --ds-task-immersive-mid: rgb(255 255 255 / .62);
+  --ds-task-immersive-far: rgb(255 255 255 / .08);
 }
 
 html.codex-dream-skin[data-dream-theme-id="preset-saber-ice-atelier"]:is(
@@ -1280,10 +1280,15 @@ html.codex-dream-skin[data-dream-theme-id="preset-saber-ice-atelier"] body {
 
 html.codex-dream-skin[data-dream-theme-id="preset-saber-ice-atelier"][data-dream-art-wide="true"]:has(main.main-surface) body {
   background-position: right bottom !important;
-  background-size: auto 78% !important;
+  background-size: auto 90% !important;
 }
 
-/* Animated crop from the lower-right of the 2400x1350 background. Its
+html.codex-dream-skin[data-dream-theme-id="preset-saber-ice-atelier"][data-dream-art-wide="true"]:has(main.main-surface.dream-skin-home-shell) body {
+  background-position: var(--dream-skin-home-art-position, right center) !important;
+  background-size: cover !important;
+}
+
+/* Animated crop from the lower-right of the 3840x2160 background. Its
    dimensions follow the exact 78vh wallpaper scale, so only the skirt patch
    replaces the matching static pixels without moving the character. */
 html.codex-dream-skin[data-dream-theme-id="preset-saber-ice-atelier"] #codex-dream-skin-animated-overlay {
@@ -1416,7 +1421,18 @@ html.codex-dream-skin[data-dream-theme-id="preset-saber-ice-atelier"] aside.app-
 }
 
 html.codex-dream-skin[data-dream-theme-id="preset-saber-ice-atelier"] main.main-surface {
-  background: linear-gradient(90deg, rgb(255 255 255 / .98), rgb(255 255 255 / .92) 60%, rgb(255 255 255 / .30)) !important;
+  background: linear-gradient(90deg, rgb(255 255 255 / .96), rgb(255 255 255 / .82) 60%, rgb(255 255 255 / .10)) !important;
+}
+
+html.codex-dream-skin[data-dream-theme-id="preset-saber-ice-atelier"] main.main-surface.dream-skin-home-shell {
+  background:
+    radial-gradient(ellipse at 58% 8%, rgb(145 205 239 / .12), transparent 34%),
+    linear-gradient(116deg, transparent 0 49%, rgb(111 174 220 / .05) 49.4%, transparent 51%),
+    linear-gradient(90deg,
+    rgb(255 255 255 / .92),
+    rgb(255 255 255 / .72) 44%,
+    rgb(255 255 255 / .30) 72%,
+    rgb(255 255 255 / .03)) !important;
 }
 
 html.codex-dream-skin[data-dream-theme-id="preset-saber-ice-atelier"] main.main-surface:not(.dream-skin-home-shell) [role="main"] {
@@ -1427,9 +1443,9 @@ html.codex-dream-skin[data-dream-theme-id="preset-saber-ice-atelier"] main.main-
 html.codex-dream-skin[data-dream-theme-id="preset-saber-ice-atelier"] main.main-surface:not(.dream-skin-home-shell) article,
 html.codex-dream-skin[data-dream-theme-id="preset-saber-ice-atelier"] [data-message-author-role] {
   border: 1px solid rgb(111 174 220 / .20) !important;
-  background: rgb(255 255 255 / .88) !important;
+  background: rgb(255 255 255 / .84) !important;
   box-shadow: 0 8px 24px rgb(68 112 146 / .10), inset 0 1px rgb(255 255 255 / .92) !important;
-  backdrop-filter: blur(14px) saturate(104%) !important;
+  backdrop-filter: none !important;
 }
 
 html.codex-dream-skin[data-dream-theme-id="preset-saber-ice-atelier"] [data-message-author-role="user"] {
@@ -1440,9 +1456,9 @@ html.codex-dream-skin[data-dream-theme-id="preset-saber-ice-atelier"] [data-mess
 html.codex-dream-skin[data-dream-theme-id="preset-saber-ice-atelier"] .dream-skin-home > div:first-child > div:first-child > div:first-child {
   border: 1px solid rgb(111 174 220 / .22) !important;
   border-radius: 16px !important;
-  background: rgb(255 255 255 / .84) !important;
+  background: rgb(255 255 255 / .78) !important;
   box-shadow: 0 12px 30px rgb(68 112 146 / .10) !important;
-  backdrop-filter: blur(14px) saturate(104%) !important;
+  backdrop-filter: none !important;
 }
 
 html.codex-dream-skin[data-dream-theme-id="preset-saber-ice-atelier"] .dream-skin-home > div:first-child > div:first-child > div:first-child::before {
@@ -1451,9 +1467,9 @@ html.codex-dream-skin[data-dream-theme-id="preset-saber-ice-atelier"] .dream-ski
 
 html.codex-dream-skin[data-dream-theme-id="preset-saber-ice-atelier"] .dream-skin-home .group\/home-suggestions button {
   border-color: rgb(111 174 220 / .22) !important;
-  background: rgb(255 255 255 / .94) !important;
+  background: rgb(255 255 255 / .88) !important;
   box-shadow: 0 7px 18px rgb(68 112 146 / .08) !important;
-  backdrop-filter: blur(12px) !important;
+  backdrop-filter: none !important;
 }
 
 html.codex-dream-skin[data-dream-theme-id="preset-saber-ice-atelier"] .dream-skin-home .group\/home-suggestions button:hover {
@@ -1465,9 +1481,9 @@ html.codex-dream-skin[data-dream-theme-id="preset-saber-ice-atelier"] .dream-ski
 html.codex-dream-skin[data-dream-theme-id="preset-saber-ice-atelier"] .composer-surface-chrome,
 html.codex-dream-skin[data-dream-theme-id="preset-saber-ice-atelier"] .dream-skin-home-utility {
   border-color: rgb(111 174 220 / .30) !important;
-  background: rgb(255 255 255 / .96) !important;
+  background: rgb(255 255 255 / .92) !important;
   box-shadow: 0 12px 28px rgb(68 112 146 / .12), inset 0 1px #ffffff !important;
-  backdrop-filter: blur(16px) saturate(104%) !important;
+  backdrop-filter: none !important;
 }
 
 html.codex-dream-skin[data-dream-theme-id="preset-saber-ice-atelier"]
@@ -1499,11 +1515,70 @@ html.codex-dream-skin[data-dream-theme-id="preset-saber-ice-atelier"] #codex-dre
   display: none !important;
 }
 
-/* Home route: compact briefing panel above a row of native action cards. */
+/* Home route: keep the native greeting in the first viewport. The artwork is a
+   lower-right desktop accent for this preset, so the heading should not reserve
+   an image-led hero slot above the composer. */
+html.codex-dream-skin[data-dream-theme-id="preset-saber-ice-atelier"]
+  .dream-skin-home > div:first-child {
+  padding-top: 0 !important;
+}
+
+html.codex-dream-skin[data-dream-theme-id="preset-saber-ice-atelier"]
+  .dream-skin-home > div:first-child:has(> .home-banners:empty) {
+  min-height: 0 !important;
+  height: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+}
+
+html.codex-dream-skin[data-dream-theme-id="preset-saber-ice-atelier"]
+  .dream-skin-home > div:has([data-feature="game-source"]) {
+  padding-top: clamp(38px, 5.9cqh, 68px) !important;
+  transform: translateY(-64px) !important;
+}
+
+html.codex-dream-skin[data-dream-theme-id="preset-saber-ice-atelier"]
+  .dream-skin-home > div:has([data-feature="game-source"]) > div:first-child {
+  flex: 0 0 auto !important;
+  min-height: 0 !important;
+  height: auto !important;
+  align-items: flex-start !important;
+  justify-content: flex-start !important;
+  padding-bottom: 0 !important;
+}
+
+html.codex-dream-skin[data-dream-theme-id="preset-saber-ice-atelier"]
+  .dream-skin-home > div:has([data-feature="game-source"]) > div:first-child > div:first-child {
+  justify-content: flex-start !important;
+}
+
+html.codex-dream-skin[data-dream-theme-id="preset-saber-ice-atelier"]
+  .dream-skin-home div:has(> [data-feature="game-source"]) {
+  align-items: flex-start !important;
+}
+
+html.codex-dream-skin[data-dream-theme-id="preset-saber-ice-atelier"]
+  .dream-skin-home div:has(> .group\/home-suggestions) {
+  align-self: flex-start !important;
+  width: min(720px, 62cqw) !important;
+  max-width: calc(100% - 36px) !important;
+  margin-top: clamp(26px, 3.2cqh, 40px) !important;
+  margin-right: auto !important;
+}
+
+html.codex-dream-skin[data-dream-theme-id="preset-saber-ice-atelier"]
+  .dream-skin-home > div:first-child > div:first-child {
+  flex: 0 0 auto !important;
+  min-height: 0 !important;
+  align-items: center !important;
+  padding-bottom: 8px !important;
+}
+
 html.codex-dream-skin[data-dream-theme-id="preset-saber-ice-atelier"]
   .dream-skin-home > div:first-child > div:first-child > div:first-child {
-  height: clamp(274px, 25cqw, 334px) !important;
-  min-height: 274px !important;
+  width: min(760px, calc(100% - 28px)) !important;
+  height: auto !important;
+  min-height: 0 !important;
   border-color: rgb(111 174 220 / .38) !important;
   border-radius: 14px !important;
   background: #f5fbff !important;
@@ -1521,15 +1596,19 @@ html.codex-dream-skin[data-dream-theme-id="preset-saber-ice-atelier"]
 
 html.codex-dream-skin[data-dream-theme-id="preset-saber-ice-atelier"]
   .dream-skin-home > div:first-child > div:first-child > div:first-child > div:first-child {
+  height: auto !important;
+  min-height: 0 !important;
   align-items: flex-start !important;
   justify-content: center !important;
-  padding: 0 38px 0 42px !important;
+  padding: 18px 24px 20px !important;
 }
 
 html.codex-dream-skin[data-dream-theme-id="preset-saber-ice-atelier"]
   .dream-skin-home > div:first-child > div:first-child > div:first-child > div:first-child > div:first-child {
-  width: min(74%, 900px) !important;
-  align-self: flex-start !important;
+  width: 100% !important;
+  align-items: flex-start !important;
+  align-self: center !important;
+  text-align: left !important;
   margin-right: auto !important;
 }
 
@@ -1559,7 +1638,10 @@ html.codex-dream-skin[data-dream-theme-id="preset-saber-ice-atelier"] .dream-ski
 
 html.codex-dream-skin[data-dream-theme-id="preset-saber-ice-atelier"] .dream-skin-home [data-feature="game-source"] {
   position: relative !important;
-  min-height: 148px !important;
+  width: min(720px, 100%) !important;
+  min-height: 0 !important;
+  margin-right: auto !important;
+  align-items: flex-start !important;
   font-size: 0 !important;
   line-height: 0 !important;
   text-align: left !important;
@@ -1570,7 +1652,7 @@ html.codex-dream-skin[data-dream-theme-id="preset-saber-ice-atelier"] .dream-ski
   display: block !important;
   color: #215f92 !important;
   font-family: "Iowan Old Style", Baskerville, "Songti SC", serif !important;
-  font-size: clamp(44px, 3.2vw, 58px) !important;
+  font-size: clamp(30px, 2.35vw, 42px) !important;
   font-style: italic !important;
   font-weight: 600 !important;
   line-height: 1.08 !important;
@@ -1999,6 +2081,99 @@ html.codex-dream-skin[data-dream-theme-id="preset-saber-ice-atelier"][data-dream
   font-weight: 560 !important;
   line-height: 1 !important;
   opacity: 1 !important;
+}
+
+/* Home poster composition: keep native action cards in the left-safe area so
+   the right-side Saber poster remains readable instead of being covered. */
+html.codex-dream-skin[data-dream-theme-id="preset-saber-ice-atelier"]
+  .dream-skin-home div:has(> .group\/home-suggestions) {
+  align-self: flex-start !important;
+  width: min(720px, 62cqw) !important;
+  max-width: calc(100% - 36px) !important;
+  margin-top: clamp(26px, 3.2cqh, 40px) !important;
+  margin-right: auto !important;
+}
+
+html.codex-dream-skin[data-dream-theme-id="preset-saber-ice-atelier"]
+  .dream-skin-home .group\/home-suggestions,
+html.codex-dream-skin[data-dream-theme-id="preset-saber-ice-atelier"]
+  .dream-skin-home .group\/home-suggestions > *:has(button) {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  gap: 8px !important;
+  width: 100% !important;
+  max-width: 720px !important;
+  margin-inline: 0 auto !important;
+  overflow: visible !important;
+}
+
+html.codex-dream-skin[data-dream-theme-id="preset-saber-ice-atelier"]
+  .dream-skin-home .group\/home-suggestions [class*="grid-cols-"] {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  gap: 8px !important;
+  width: 720px !important;
+  max-width: 720px !important;
+}
+
+html.codex-dream-skin[data-dream-theme-id="preset-saber-ice-atelier"]
+  .dream-skin-home .group\/home-suggestions > *,
+html.codex-dream-skin[data-dream-theme-id="preset-saber-ice-atelier"]
+  .dream-skin-home .group\/home-suggestions [class*="grid-cols-"] > * {
+  display: block !important;
+  min-width: 0 !important;
+  width: 300px !important;
+  max-width: 300px !important;
+  flex: 0 0 auto !important;
+}
+
+html.codex-dream-skin[data-dream-theme-id="preset-saber-ice-atelier"][data-dream-card-art-count="4"]
+  .dream-skin-home .group\/home-suggestions button[data-dream-card-index] {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 300px !important;
+  min-height: 58px !important;
+  flex: 0 0 auto !important;
+  border-radius: 10px !important;
+  background: rgb(255 255 255 / .76) !important;
+  box-shadow: 0 6px 16px rgb(68 112 146 / .07), inset 0 1px rgb(255 255 255 / .72) !important;
+}
+
+html.codex-dream-skin[data-dream-theme-id="preset-saber-ice-atelier"][data-dream-card-art-count="4"]
+  .dream-skin-home .group\/home-suggestions .dream-skin-card-native-copy {
+  inset: 10px 13px auto 14px !important;
+  font-size: 11px !important;
+  font-weight: 650 !important;
+  line-height: 1.28 !important;
+}
+
+html.codex-dream-skin[data-dream-theme-id="preset-saber-ice-atelier"][data-dream-card-art-count="4"]
+  .dream-skin-home .group\/home-suggestions .dream-skin-card-label {
+  left: 14px !important;
+  bottom: 8px !important;
+  font-size: 10px !important;
+  opacity: .82 !important;
+}
+
+@media (max-width: 900px) {
+  html.codex-dream-skin[data-dream-theme-id="preset-saber-ice-atelier"]
+    .dream-skin-home div:has(> .group\/home-suggestions) {
+    width: min(100%, 520px) !important;
+    max-width: calc(100% - 28px) !important;
+  }
+
+  html.codex-dream-skin[data-dream-theme-id="preset-saber-ice-atelier"]
+    .dream-skin-home .group\/home-suggestions {
+    max-width: 100% !important;
+  }
+
+  html.codex-dream-skin[data-dream-theme-id="preset-saber-ice-atelier"][data-dream-card-art-count="4"]
+    .dream-skin-home .group\/home-suggestions button[data-dream-card-index] {
+    max-width: 100% !important;
+    min-height: 64px !important;
+  }
 }
 
 @media (max-width: 900px) {

@@ -314,6 +314,25 @@ async function loadTheme(themeDir) {
     throw new Error(`${configPath} has an invalid image field`);
   }
   if (path.basename(raw.image) !== raw.image) throw new Error("Theme image must stay inside its theme directory");
+  const supportedImageExtensions = new Set([".png", ".jpg", ".jpeg", ".webp"]);
+  const validateImageAssetName = (value, fieldName) => {
+    if (typeof value !== "string" || !value || /[\u0000-\u001f\u007f-\u009f\u2028\u2029]/u.test(value)) {
+      throw new Error(`${configPath} has an invalid ${fieldName} field`);
+    }
+    if (path.basename(value) !== value) {
+      throw new Error(`Theme ${fieldName} must stay inside its theme directory`);
+    }
+    const extension = path.extname(value).toLowerCase();
+    if (!supportedImageExtensions.has(extension)) {
+      throw new Error(`Unsupported theme ${fieldName} format: ${extension || "missing"}`);
+    }
+    return value;
+  };
+  const homeImageName = (() => {
+    if (raw.homeImage === undefined) return null;
+    const value = validateImageAssetName(raw.homeImage, "homeImage");
+    return value === raw.image ? null : value;
+  })();
   const cardArtNames = (() => {
     if (raw.cardArt === undefined) return [];
     if (!Array.isArray(raw.cardArt) || raw.cardArt.length > MAX_CARD_ART_COUNT) {
@@ -324,11 +343,11 @@ async function loadTheme(themeDir) {
       if (typeof value !== "string" || !value || /[\u0000-\u001f\u007f-\u009f\u2028\u2029]/u.test(value)) {
         throw new Error(`${configPath} has an invalid cardArt[${index}] field`);
       }
-      if (path.basename(value) !== value || value === raw.image || seen.has(value)) {
+      if (path.basename(value) !== value || value === raw.image || value === homeImageName || seen.has(value)) {
         throw new Error("Theme card art must be unique and stay inside its theme directory");
       }
       const extension = path.extname(value).toLowerCase();
-      if (![".png", ".jpg", ".jpeg", ".webp"].includes(extension)) {
+      if (!supportedImageExtensions.has(extension)) {
         throw new Error(`Unsupported theme card art format: ${extension || "missing"}`);
       }
       seen.add(value);
@@ -341,11 +360,11 @@ async function loadTheme(themeDir) {
     if (typeof value !== "string" || !value || /[\u0000-\u001f\u007f-\u009f\u2028\u2029]/u.test(value)) {
       throw new Error(`${configPath} has an invalid sidebarEmblem field`);
     }
-    if (path.basename(value) !== value || value === raw.image || cardArtNames.includes(value)) {
+    if (path.basename(value) !== value || value === raw.image || value === homeImageName || cardArtNames.includes(value)) {
       throw new Error("Theme sidebar emblem must be unique and stay inside its theme directory");
     }
     const extension = path.extname(value).toLowerCase();
-    if (![".png", ".jpg", ".jpeg", ".webp"].includes(extension)) {
+    if (!supportedImageExtensions.has(extension)) {
       throw new Error(`Unsupported theme sidebar emblem format: ${extension || "missing"}`);
     }
     return value;
@@ -356,11 +375,12 @@ async function loadTheme(themeDir) {
     if (typeof value !== "string" || !value || /[\u0000-\u001f\u007f-\u009f\u2028\u2029]/u.test(value)) {
       throw new Error(`${configPath} has an invalid environmentCardArt field`);
     }
-    if (path.basename(value) !== value || value === raw.image || cardArtNames.includes(value) || value === sidebarEmblemName) {
+    if (path.basename(value) !== value || value === raw.image || value === homeImageName
+      || cardArtNames.includes(value) || value === sidebarEmblemName) {
       throw new Error("Theme environment card art must be unique and stay inside its theme directory");
     }
     const extension = path.extname(value).toLowerCase();
-    if (![".png", ".jpg", ".jpeg", ".webp"].includes(extension)) {
+    if (!supportedImageExtensions.has(extension)) {
       throw new Error(`Unsupported theme environment card art format: ${extension || "missing"}`);
     }
     return value;
@@ -371,12 +391,12 @@ async function loadTheme(themeDir) {
     if (typeof value !== "string" || !value || /[\u0000-\u001f\u007f-\u009f\u2028\u2029]/u.test(value)) {
       throw new Error(`${configPath} has an invalid filePanelArt field`);
     }
-    if (path.basename(value) !== value || value === raw.image || cardArtNames.includes(value)
+    if (path.basename(value) !== value || value === raw.image || value === homeImageName || cardArtNames.includes(value)
       || value === sidebarEmblemName || value === environmentCardArtName) {
       throw new Error("Theme file panel art must be unique and stay inside its theme directory");
     }
     const extension = path.extname(value).toLowerCase();
-    if (![".png", ".jpg", ".jpeg", ".webp"].includes(extension)) {
+    if (!supportedImageExtensions.has(extension)) {
       throw new Error(`Unsupported theme file panel art format: ${extension || "missing"}`);
     }
     return value;
@@ -387,12 +407,12 @@ async function loadTheme(themeDir) {
     if (typeof value !== "string" || !value || /[\u0000-\u001f\u007f-\u009f\u2028\u2029]/u.test(value)) {
       throw new Error(`${configPath} has an invalid reviewPanelArt field`);
     }
-    if (path.basename(value) !== value || value === raw.image || cardArtNames.includes(value)
+    if (path.basename(value) !== value || value === raw.image || value === homeImageName || cardArtNames.includes(value)
       || value === sidebarEmblemName || value === environmentCardArtName || value === filePanelArtName) {
       throw new Error("Theme review panel art must be unique and stay inside its theme directory");
     }
     const extension = path.extname(value).toLowerCase();
-    if (![".png", ".jpg", ".jpeg", ".webp"].includes(extension)) {
+    if (!supportedImageExtensions.has(extension)) {
       throw new Error(`Unsupported theme review panel art format: ${extension || "missing"}`);
     }
     return value;
@@ -403,7 +423,7 @@ async function loadTheme(themeDir) {
     if (typeof value !== "string" || !value || /[\u0000-\u001f\u007f-\u009f\u2028\u2029]/u.test(value)) {
       throw new Error(`${configPath} has an invalid animatedOverlay field`);
     }
-    if (path.basename(value) !== value || value === raw.image || cardArtNames.includes(value)
+    if (path.basename(value) !== value || value === raw.image || value === homeImageName || cardArtNames.includes(value)
       || value === sidebarEmblemName || value === environmentCardArtName || value === filePanelArtName
       || value === reviewPanelArtName) {
       throw new Error("Theme animated overlay must be unique and stay inside its theme directory");
@@ -459,6 +479,14 @@ async function loadTheme(themeDir) {
     safeArea: choice(rawArt.safeArea, "art.safeArea", ["auto", "left", "right", "center", "none"]),
     taskMode: choice(rawArt.taskMode, "art.taskMode", ["auto", "ambient", "banner", "off"]),
   };
+  if (raw.homeArt !== undefined && (!raw.homeArt || typeof raw.homeArt !== "object" || Array.isArray(raw.homeArt))) {
+    throw new Error(`${configPath} has an invalid homeArt field`);
+  }
+  const rawHomeArt = raw.homeArt || {};
+  const homeArt = {
+    focusX: unit(rawHomeArt.focusX, "homeArt.focusX"),
+    focusY: unit(rawHomeArt.focusY, "homeArt.focusY"),
+  };
   const theme = {
     schemaVersion: 1,
     id: text(raw.id, "custom", 80, "id"),
@@ -470,6 +498,7 @@ async function loadTheme(themeDir) {
     statusText: text(raw.statusText, "SABER THEME ONLINE", 80, "statusText"),
     quote: text(raw.quote, "MAKE SOMETHING WONDERFUL", 80, "quote"),
     image: raw.image,
+    homeImage: homeImageName,
     colorMode: rawColors ? "explicit" : "auto",
     explicitColorKeys: rawColors ? colorKeys.filter((key) => Object.hasOwn(rawColors, key)) : [],
     colors: {
@@ -488,6 +517,9 @@ async function loadTheme(themeDir) {
   if (appearance !== undefined) theme.appearance = appearance;
   if (Object.values(art).some((value) => value !== undefined)) {
     theme.art = Object.fromEntries(Object.entries(art).filter(([, value]) => value !== undefined));
+  }
+  if (Object.values(homeArt).some((value) => value !== undefined)) {
+    theme.homeArt = Object.fromEntries(Object.entries(homeArt).filter(([, value]) => value !== undefined));
   }
   const requestedImagePath = path.join(assetsRoot, theme.image);
   let imagePath;
@@ -526,6 +558,44 @@ async function loadTheme(themeDir) {
     if (art.length < 1 || art.length > MAX_ART_BYTES) {
       throw new Error(`Theme image must be a non-empty file no larger than ${MAX_ART_BYTES} bytes`);
     }
+    const homeImage = await (async () => {
+      if (!homeImageName) return null;
+      const requestedHomeImagePath = path.join(assetsRoot, homeImageName);
+      const homeImagePath = await fs.realpath(requestedHomeImagePath).catch((error) => {
+        if (error.code === "ENOENT") throw new Error(`Theme homeImage is missing: ${requestedHomeImagePath}`);
+        throw error;
+      });
+      assertContainedPath(assetsRoot, homeImagePath, "Theme homeImage");
+      const homeImageStat = await fs.stat(homeImagePath);
+      const homeImageExtension = path.extname(homeImageName).toLowerCase();
+      let homeImageHandle;
+      try {
+        homeImageHandle = await fs.open(homeImagePath, fsConstants.O_RDONLY | (fsConstants.O_NOFOLLOW ?? 0));
+      } catch (error) {
+        if (error.code === "ELOOP") throw new Error("Theme homeImage changed into a symbolic link while loading");
+        throw error;
+      }
+      try {
+        const openedHomeImageStat = await homeImageHandle.stat();
+        if (
+          !homeImageStat.isFile()
+          || !openedHomeImageStat.isFile()
+          || homeImageStat.dev !== openedHomeImageStat.dev
+          || homeImageStat.ino !== openedHomeImageStat.ino
+          || openedHomeImageStat.size < 1
+          || openedHomeImageStat.size > MAX_ART_BYTES
+        ) {
+          throw new Error(`Theme homeImage must be a stable non-empty file no larger than ${MAX_ART_BYTES} bytes`);
+        }
+        const bytes = await homeImageHandle.readFile();
+        if (bytes.length < 1 || bytes.length > MAX_ART_BYTES) {
+          throw new Error(`Theme homeImage must be a non-empty file no larger than ${MAX_ART_BYTES} bytes`);
+        }
+        return { bytes, extension: homeImageExtension, name: homeImageName };
+      } finally {
+        await homeImageHandle.close();
+      }
+    })();
     const cardArt = await Promise.all(cardArtNames.map(async (name) => {
       const requestedCardPath = path.join(assetsRoot, name);
       const cardPath = await fs.realpath(requestedCardPath).catch((error) => {
@@ -739,12 +809,13 @@ async function loadTheme(themeDir) {
       }
     })();
     theme.cardArt = cardArt.map((item) => item.name);
+    if (homeImage) theme.homeImage = homeImage.name;
     if (sidebarEmblem) theme.sidebarEmblem = sidebarEmblem.name;
     if (environmentCardArt) theme.environmentCardArt = environmentCardArt.name;
     if (filePanelArt) theme.filePanelArt = filePanelArt.name;
     if (reviewPanelArt) theme.reviewPanelArt = reviewPanelArt.name;
     if (animatedOverlay) theme.animatedOverlay = animatedOverlay.name;
-    return { art, assetsRoot, extension, imagePath, theme, cardArt, sidebarEmblem, environmentCardArt, filePanelArt, reviewPanelArt, animatedOverlay };
+    return { art, assetsRoot, extension, imagePath, theme, homeImage, cardArt, sidebarEmblem, environmentCardArt, filePanelArt, reviewPanelArt, animatedOverlay };
   } finally {
     await imageHandle.close();
   }
@@ -776,7 +847,7 @@ async function loadPayload(themeDir) {
     loadTheme(themeDir),
   ]);
   const { css, template } = staticAssets;
-  const { art, extension, theme, cardArt, sidebarEmblem, environmentCardArt, filePanelArt, reviewPanelArt, animatedOverlay } = loaded;
+  const { art, extension, theme, homeImage, cardArt, sidebarEmblem, environmentCardArt, filePanelArt, reviewPanelArt, animatedOverlay } = loaded;
   const styleRevision = createHash("sha256").update(css).digest("hex").slice(0, 20);
   const artMetadata = readImageMetadata(art, extension);
   if (!artMetadata) {
@@ -788,6 +859,18 @@ async function loadPayload(themeDir) {
   const mime = extension === ".jpg" || extension === ".jpeg" ? "image/jpeg"
     : extension === ".webp" ? "image/webp" : "image/png";
   const artDataUrl = `data:${mime};base64,${art.toString("base64")}`;
+  const homeImageDataUrl = (() => {
+    if (!homeImage) return null;
+    const homeImageMetadata = readImageMetadata(homeImage.bytes, homeImage.extension);
+    if (!homeImageMetadata) {
+      throw new Error(`Theme homeImage is invalid: ${homeImage.name}`);
+    }
+    const homeImageMime = homeImage.extension === ".jpg" || homeImage.extension === ".jpeg" ? "image/jpeg"
+      : homeImage.extension === ".webp" ? "image/webp" : "image/png";
+    theme.homeArtMetadata = homeImageMetadata;
+    theme.homeArtKey = createHash("sha256").update(homeImage.bytes).digest("hex").slice(0, 20);
+    return `data:${homeImageMime};base64,${homeImage.bytes.toString("base64")}`;
+  })();
   const cardArtDataUrls = cardArt.map((item) => {
     if (!readImageMetadata(item.bytes, item.extension)) {
       throw new Error(`Theme card art is invalid: ${item.name}`);
@@ -848,6 +931,7 @@ async function loadPayload(themeDir) {
   const payload = template
     .replace("__DREAM_SKIN_CSS_JSON__", JSON.stringify(css))
     .replace("__DREAM_SKIN_ART_JSON__", JSON.stringify(artDataUrl))
+    .replace("__DREAM_SKIN_HOME_ART_JSON__", JSON.stringify(homeImageDataUrl))
     .replace("__DREAM_SKIN_CARD_ART_JSON__", JSON.stringify(cardArtDataUrls))
     .replace("__DREAM_SKIN_SIDEBAR_EMBLEM_JSON__", JSON.stringify(sidebarEmblemDataUrl))
     .replace("__DREAM_SKIN_ENVIRONMENT_CARD_ART_JSON__", JSON.stringify(environmentCardArtDataUrl))
@@ -866,6 +950,7 @@ async function loadPayload(themeDir) {
     .slice(0, 20);
   return {
     imageBytes: art.length,
+    homeImageBytes: homeImage?.bytes.length ?? 0,
     cardArtBytes: cardArt.reduce((total, item) => total + item.bytes.length, 0),
     sidebarEmblemBytes: sidebarEmblem?.bytes.length ?? 0,
     environmentCardArtBytes: environmentCardArt?.bytes.length ?? 0,
@@ -893,6 +978,7 @@ async function removeFromSession(session) {
     if (state?.cleanup) return state.cleanup();
     document.documentElement?.classList.remove('codex-dream-skin');
     document.documentElement?.style.removeProperty('--dream-skin-art');
+    document.documentElement?.style.removeProperty('--dream-skin-home-art');
     document.getElementById('codex-dream-skin-style')?.remove();
     document.getElementById('codex-dream-skin-chrome')?.remove();
     delete window.__CODEX_DREAM_SKIN_STATE__;
@@ -930,6 +1016,7 @@ async function verifySession(session) {
     const cardBoxes = suggestions ? [...suggestions.querySelectorAll('button')].map(box) : [];
     const visibleCards = cardBoxes.filter((item) => item?.visible);
     const hero = box(home?.firstElementChild?.firstElementChild?.firstElementChild);
+    const homeTitle = box(home?.querySelector('[data-feature="game-source"]'));
     const projectButton = box(home?.querySelector('.group\\\\/project-selector > button'));
     const shell = box(document.querySelector('main.main-surface'));
     const composer = box(document.querySelector('.composer-surface-chrome'));
@@ -944,6 +1031,7 @@ async function verifySession(session) {
       homeRoute: Boolean(homeRoute),
       homePresent: Boolean(home),
       hero,
+      homeTitle,
       cards: cardBoxes,
       visibleCardCount: visibleCards.length,
       projectButton,
@@ -961,7 +1049,10 @@ async function verifySession(session) {
       Boolean(result.shell?.visible) && Boolean(result.sidebar?.visible) && !result.documentOverflow.x;
     // Project selector markup varies across Codex builds — soft requirement.
     const homePass = !result.homeRoute || (
-      result.homePresent && result.hero?.visible && result.hero.width >= 280 && result.hero.height >= 120
+      result.homePresent && (
+        (result.hero?.visible && result.hero.width >= 280 && result.hero.height >= 120)
+        || (result.homeTitle?.visible && result.homeTitle.width >= 180 && result.homeTitle.height >= 24)
+      )
     );
     result.pass = Boolean(basePass && homePass);
     result.softNotes = {
@@ -1093,7 +1184,7 @@ function watchPayloadSources(themeDir, onDirty) {
   const add = (directory, kind) => {
     let watcher;
     try {
-      watcher = watchFs(directory, { persistent: false }, (_event, filename) => {
+      watcher = watchFs(directory, { persistent: true }, (_event, filename) => {
         const name = filename ? String(filename) : "";
         const staticChanged = directory === assetsRoot &&
           (!name || name === "dream-skin.css" || name === "renderer-inject.js");
@@ -1272,10 +1363,12 @@ if (path.resolve(process.argv[1] || "") === path.resolve(scriptPath)) {
         themeId: loaded.theme.id,
         themeName: loaded.theme.name,
         imageBytes: loaded.imageBytes,
+        homeImageBytes: loaded.homeImageBytes,
         cardArtBytes: loaded.cardArtBytes,
         cardArtCount: loaded.theme.cardArt?.length ?? 0,
         payloadBytes: Buffer.byteLength(loaded.payload),
         artMetadata: loaded.theme.artMetadata ?? null,
+        homeArtMetadata: loaded.theme.homeArtMetadata ?? null,
         timings: loaded.timings,
       }, null, 2));
     } else if (options.mode === "watch") await runWatch(options);

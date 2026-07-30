@@ -8,7 +8,8 @@
   "projectLabel": "◉  选择项目",
   "statusText": "SABER THEME ONLINE",
   "quote": "MAKE SOMETHING WONDERFUL",
-  "image": "background.jpg",
+  "image": "background.png",
+  "homeImage": "home-background.png",
   "cardArt": [
     "card-archer.webp",
     "card-lancer.webp",
@@ -25,6 +26,10 @@
     "taskMode": "ambient",
     "focusX": 1,
     "focusY": 1
+  },
+  "homeArt": {
+    "focusX": 1,
+    "focusY": 0.5
   },
   "colors": {
     "background": "#eef7ff",

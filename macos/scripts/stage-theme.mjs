@@ -95,6 +95,10 @@ async function main() {
   if (/[\u0000-\u001f\u007f-\u009f\u2028\u2029]/u.test(theme.image)) {
     throw new Error("Theme image contains control characters");
   }
+  const homeImage = theme.homeImage === undefined ? null : theme.homeImage;
+  if (homeImage !== null && (typeof homeImage !== "string" || !homeImage)) {
+    throw new Error("Theme homeImage must be an image filename");
+  }
   const cardArt = theme.cardArt === undefined ? [] : theme.cardArt;
   if (!Array.isArray(cardArt) || cardArt.length > MAX_CARD_ART_COUNT) {
     throw new Error("Theme cardArt must contain at most four image filenames");
@@ -121,6 +125,7 @@ async function main() {
   }
   const assetNames = [
     theme.image,
+    ...(homeImage && homeImage !== theme.image ? [homeImage] : []),
     ...cardArt,
     ...(sidebarEmblem ? [sidebarEmblem] : []),
     ...(environmentCardArt ? [environmentCardArt] : []),
@@ -142,6 +147,7 @@ async function main() {
   const assets = await Promise.all(assetNames.map(async (name, index) => {
     const assetPath = path.resolve(sourceRoot, name);
     const label = index === 0 ? "Theme image"
+      : name === homeImage ? "Theme home image"
       : name === sidebarEmblem ? "Theme sidebar emblem"
         : name === environmentCardArt ? "Theme environment card art" : "Theme card art";
     const resolvedLabel = name === animatedOverlay ? "Theme animated overlay"

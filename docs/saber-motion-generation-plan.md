@@ -55,6 +55,18 @@ Locked camera and unchanged composition. Saber remains perfectly still: face, ey
 
 从候选视频中只保留裙摆、丝带和少量发梢区域，其余区域全部使用静态母版。背景露出的部分使用干净背景板补齐。最终输出仍采用右下角局部覆盖，而不是整屏视频。
 
+仓库提供本地合成工具：
+
+```bash
+tools/render-saber-motion-overlay.sh \
+  --source /absolute/path/saber-loop-source.mp4 \
+  --mask /absolute/path/saber-motion-mask.png \
+  --output /absolute/path/saber-motion-candidate.webp
+```
+
+输入视频必须是已经无缝循环的 `2400×1350` 锁镜头素材；遮罩是对应右下角
+`570×870` 裁片的灰度图。工具只生成透明 WebP，不会修改 `theme.json` 或启用动效。
+
 ## 验收标准
 
 - 4 至 6 秒循环，首尾位置和速度连续。

@@ -33,6 +33,7 @@ try {
   await fs.mkdir(source, { recursive: true });
   await fs.mkdir(stage);
   await fs.copyFile(fixtureAsset, path.join(source, "background-a.png"));
+  await fs.copyFile(fixtureAsset, path.join(source, "home-background.png"));
   await fs.copyFile(fixtureAsset, path.join(source, "class-archer.png"));
   await fs.copyFile(fixtureAsset, path.join(source, "sidebar-emblem.png"));
   await fs.copyFile(fixtureAsset, path.join(source, "environment-card-art.png"));
@@ -46,6 +47,7 @@ try {
       id: "preset-race",
       name: "A",
       image: "background-a.png",
+      homeImage: "home-background.png",
       cardArt: ["class-archer.png"],
       sidebarEmblem: "sidebar-emblem.png",
       environmentCardArt: "environment-card-art.png",
@@ -59,12 +61,17 @@ try {
   assert.equal(imageName, "background-a.png");
   const stagedConfig = JSON.parse(await fs.readFile(path.join(stage, "theme.json"), "utf8"));
   assert.equal(stagedConfig.image, "background-a.png");
+  assert.equal(stagedConfig.homeImage, "home-background.png");
   assert.deepEqual(stagedConfig.cardArt, ["class-archer.png"]);
   assert.equal(stagedConfig.sidebarEmblem, "sidebar-emblem.png");
   assert.equal(stagedConfig.environmentCardArt, "environment-card-art.png");
   assert.equal(stagedConfig.filePanelArt, "file-panel-art.png");
   assert.equal(stagedConfig.reviewPanelArt, "review-panel-art.png");
   assert.equal(stagedConfig.animatedOverlay, "animated-overlay.webp");
+  assert.deepEqual(
+    await fs.readFile(path.join(stage, "home-background.png")),
+    await fs.readFile(path.join(source, "home-background.png")),
+  );
   assert.deepEqual(
     await fs.readFile(path.join(stage, "class-archer.png")),
     await fs.readFile(path.join(source, "class-archer.png")),

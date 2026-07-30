@@ -12,9 +12,9 @@
 
 ![Codex Saber Theme 首页预览](docs/images/saber-home-preview.jpg)
 
-### 任务与审阅
+### 聊天页
 
-![Codex Saber Theme 任务与审阅预览](docs/images/saber-task-review-preview.jpg)
+![Codex Saber Theme 聊天页预览](docs/images/saber-chat-preview.jpg)
 
 ## 使用
 

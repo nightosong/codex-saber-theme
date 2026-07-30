@@ -502,28 +502,37 @@ launch_injector_daemon() {
   : > "$INJECTOR_ERROR_LOG"
   /bin/launchctl remove "$INJECTOR_JOB_LABEL" >/dev/null 2>&1 || true
 
-  # Prefer a direct background process — launchctl submit is unreliable on newer macOS.
-  /usr/bin/nohup "$NODE" "$INJECTOR" --watch --port "$port" --theme-dir "$THEME_DIR" \
-    >>"$INJECTOR_LOG" 2>>"$INJECTOR_ERROR_LOG" &
-  pid="$!"
-  /bin/sleep 0.08
-  if [ -n "$pid" ] && /bin/kill -0 "$pid" 2>/dev/null; then
-    printf '%s\n' "$pid"
-    return 0
-  fi
-
-  # Fallback: launchctl submit
+  # Prefer launchd ownership so the watcher survives the short-lived launcher
+  # shell used by Codex. Fallback to a disowned background process when launchd
+  # submit is unavailable in the current user session.
   /bin/launchctl submit -l "$INJECTOR_JOB_LABEL" -o "$INJECTOR_LOG" -e "$INJECTOR_ERROR_LOG" -- \
     "$NODE" "$INJECTOR" --watch --port "$port" --theme-dir "$THEME_DIR" >/dev/null 2>&1 || true
   /bin/launchctl kickstart -k "gui/$(/usr/bin/id -u)/$INJECTOR_JOB_LABEL" >/dev/null 2>&1 || true
-  while [ "$SECONDS" -lt "$deadline" ]; do
+  local launchd_deadline=$((SECONDS + 3))
+  while [ "$SECONDS" -lt "$launchd_deadline" ]; do
     pid="$(/bin/launchctl print "gui/$(/usr/bin/id -u)/$INJECTOR_JOB_LABEL" 2>/dev/null \
       | /usr/bin/awk '/^[[:space:]]*pid = [0-9]+/{print $3; exit}')"
     if [ -n "$pid" ] && /bin/kill -0 "$pid" 2>/dev/null; then
       printf '%s\n' "$pid"
       return 0
     fi
-    # Also detect the nohup node process by command line
+    pid="$(/bin/ps -axo pid=,command= | /usr/bin/awk -v inj="$INJECTOR" -v port="$port" '
+      index($0, inj) && index($0, "--watch") && index($0, "--port " port " --theme-dir ") { print $1; exit }
+    ')"
+    if [ -n "$pid" ] && /bin/kill -0 "$pid" 2>/dev/null; then
+      printf '%s\n' "$pid"
+      return 0
+    fi
+    /bin/sleep 0.2
+  done
+
+  /bin/launchctl remove "$INJECTOR_JOB_LABEL" >/dev/null 2>&1 || true
+  /usr/bin/nohup "$NODE" "$INJECTOR" --watch --port "$port" --theme-dir "$THEME_DIR" \
+    </dev/null >>"$INJECTOR_LOG" 2>>"$INJECTOR_ERROR_LOG" &
+  pid="$!"
+  disown "$pid" 2>/dev/null || true
+
+  while [ "$SECONDS" -lt "$deadline" ]; do
     pid="$(/bin/ps -axo pid=,command= | /usr/bin/awk -v inj="$INJECTOR" -v port="$port" '
       index($0, inj) && index($0, "--watch") && index($0, "--port " port " --theme-dir ") { print $1; exit }
     ')"

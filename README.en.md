@@ -14,9 +14,9 @@ Current version: `0.0.1`
 
 ![Codex Saber Theme home preview](docs/images/saber-home-preview.jpg)
 
-### Task and review
+### Chat
 
-![Codex Saber Theme task and review preview](docs/images/saber-task-review-preview.jpg)
+![Codex Saber Theme chat preview](docs/images/saber-chat-preview.jpg)
 
 ## Use
 

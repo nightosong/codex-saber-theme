@@ -27,6 +27,8 @@ INJECTOR_ALIVE="false"
 CDP_OK="false"
 THEME_NAME=""
 CODEX_RUNNING="false"
+SAVED_CODEX_PID=""
+SAVED_CODEX_EXE=""
 
 read_json_field() {
   # Parse machine-written JSON (one key per line) without python3, which macOS
@@ -70,11 +72,23 @@ injector_identity_matches() {
   [ -n "$actual_start" ] && [ "$actual_start" = "$expected_start" ]
 }
 
-# Codex process: cheap name match only.  26.707 renamed Codex.app to
-# ChatGPT.app, while older installs still expose the former process name.
-if /usr/bin/pgrep -x ChatGPT >/dev/null 2>&1 || /usr/bin/pgrep -x Codex >/dev/null 2>&1; then
-  CODEX_RUNNING="true"
-fi
+process_command_starts_with() {
+  local pid="$1"
+  local expected="$2"
+  local command_line
+  case "$pid" in ''|*[!0-9]*) return 1 ;; esac
+  [ -n "$expected" ] || return 1
+  command_line="$(/bin/ps -p "$pid" -o command= 2>/dev/null || true)"
+  case "$command_line" in "$expected"*) return 0 ;; *) return 1 ;; esac
+}
+
+detect_codex_running_by_path() {
+  /bin/ps -axo command= | /usr/bin/awk '
+    (index($0, "/Applications/") == 1 || index($0, "/Users/") == 1) &&
+      (index($0, "/Contents/MacOS/ChatGPT ") || index($0, "/Contents/MacOS/Codex ")) { found = 1 }
+    END { exit(found ? 0 : 1) }
+  '
+}
 
 if [ -f "$STATE_PATH" ]; then
   saved_port="$(read_json_field "$STATE_PATH" port)"
@@ -84,6 +98,8 @@ if [ -f "$STATE_PATH" ]; then
   saved_start="$(read_json_field "$STATE_PATH" injectorStartedAt)"
   saved_node="$(read_json_field "$STATE_PATH" nodePath)"
   saved_injector="$(read_json_field "$STATE_PATH" injectorPath)"
+  SAVED_CODEX_PID="$(read_json_field "$STATE_PATH" codexPid)"
+  SAVED_CODEX_EXE="$(read_json_field "$STATE_PATH" codexExe)"
   if injector_identity_matches "${pid:-}" "$saved_start" "$saved_node" "$saved_injector" "$PORT"; then
     INJECTOR_ALIVE="true"
     SESSION="active"
@@ -94,6 +110,10 @@ if [ -f "$STATE_PATH" ]; then
   elif [ -z "${SESSION:-}" ]; then
     SESSION="unknown"
   fi
+fi
+
+if process_command_starts_with "$SAVED_CODEX_PID" "$SAVED_CODEX_EXE" || detect_codex_running_by_path; then
+  CODEX_RUNNING="true"
 fi
 
 if [ -f "$THEME_DIR/theme.json" ]; then
