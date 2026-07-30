@@ -71,6 +71,7 @@ keep_theme_asset() {
     const theme = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
     const assets = [
       theme.image,
+      ...(typeof theme.homeImage === "string" && theme.homeImage !== theme.image ? [theme.homeImage] : []),
       ...(Array.isArray(theme.cardArt) ? theme.cardArt : []),
       ...(typeof theme.sidebarEmblem === "string" ? [theme.sidebarEmblem] : []),
       ...(typeof theme.environmentCardArt === "string" ? [theme.environmentCardArt] : []),

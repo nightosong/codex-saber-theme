@@ -76,5 +76,10 @@ assert.match(
   /const earlyApplied = await session\.evaluate\([\s\S]*if \(!earlyApplied\) \{[\s\S]*applyToSession/,
   "The watcher must not run the full payload twice after a successful early install.",
 );
+assert.match(
+  source,
+  /watchFs\(directory,\s*\{\s*persistent:\s*true\s*\}/,
+  "The watcher must keep the injector process alive for future Codex pages and theme edits.",
+);
 
 console.log("PASS: early injection is shell-guarded, generation-safe, and removed on shutdown.");

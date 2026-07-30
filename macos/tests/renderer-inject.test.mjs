@@ -41,13 +41,13 @@ assert.match(
 );
 assert.match(
   css,
-  /data-dream-art-wide="true"\]:has\(main\.main-surface\.dream-skin-home-shell\)[\s\S]{0,100}body\s*\{[\s\S]{0,300}background-image:\s*var\(--dream-skin-art\) !important;/,
-  "Wide home artwork should use the same full-window image as utility routes.",
+  /data-dream-art-wide="true"\]:has\(main\.main-surface\.dream-skin-home-shell\)[\s\S]{0,100}body\s*\{[\s\S]{0,300}background-image:\s*var\(--dream-skin-home-art,\s*var\(--dream-skin-art\)\) !important;/,
+  "Wide home artwork should use a home-specific image when the theme provides one.",
 );
 assert.match(
   css,
-  /data-dream-art-wide="true"\]:has\(main\.main-surface\.dream-skin-home-shell\)[\s\S]{0,120}body\s*\{[\s\S]{0,260}background-position:\s*var\(--ds-art-position\) !important;/,
-  "Wide home artwork must honor the configured focal point instead of forcing a centered crop.",
+  /data-dream-art-wide="true"\]:has\(main\.main-surface\.dream-skin-home-shell\)[\s\S]{0,120}body\s*\{[\s\S]{0,260}background-position:\s*var\(--dream-skin-home-art-position,\s*var\(--ds-art-position\)\) !important;/,
+  "Wide home artwork must honor the configured home focal point instead of forcing a centered crop.",
 );
 assert.match(
   css,
@@ -141,13 +141,83 @@ assert.match(
 );
 assert.match(
   css,
-  /data-dream-theme-id="preset-saber-ice-atelier"\]\[data-dream-art-wide="true"\]:has\(main\.main-surface\) body\s*\{[\s\S]{0,180}background-size:\s*auto 78% !important;/,
-  "Saber Ice Atelier should keep its small lower-right artwork out of the work surface.",
+  /data-dream-theme-id="preset-saber-ice-atelier"\]\[data-dream-art-wide="true"\]:has\(main\.main-surface\) body\s*\{[\s\S]{0,180}background-size:\s*auto 90% !important;/,
+  "Saber Ice Atelier should keep chat artwork clearer while preserving a lower-right accent scale.",
 );
 assert.match(
   css,
-  /data-dream-theme-id="preset-saber-ice-atelier"\][\s\S]{0,260}\.dream-skin-home > div:first-child > div:first-child > div:first-child\s*\{[\s\S]{0,300}height:\s*clamp\(274px, 25cqw, 334px\) !important;/,
-  "Saber Ice Atelier should compact the native home briefing panel.",
+  /data-dream-theme-id="preset-saber-ice-atelier"\][\s\S]{0,2200}--ds-task-immersive-far:\s*rgb\(255 255 255 \/ \.08\);/,
+  "Saber Ice Atelier task surfaces should keep the right side nearly clear over the artwork.",
+);
+assert.match(
+  css,
+  /data-dream-theme-id="preset-saber-ice-atelier"\][\s\S]{0,120}main\.main-surface\s*\{[\s\S]{0,260}rgb\(255 255 255 \/ \.10\)/,
+  "Saber Ice Atelier chat surface should use a lighter right-edge veil so the artwork does not look washed out.",
+);
+assert.match(
+  css,
+  /data-dream-theme-id="preset-saber-ice-atelier"\][\s\S]{0,320}main\.main-surface:not\(\.dream-skin-home-shell\) article,[\s\S]{0,360}backdrop-filter:\s*none !important;/,
+  "Saber Ice Atelier message cards should reduce background blur over the character art.",
+);
+assert.match(
+  css,
+  /data-dream-theme-id="preset-saber-ice-atelier"\]\[data-dream-art-wide="true"\]:has\(main\.main-surface\.dream-skin-home-shell\) body\s*\{[\s\S]{0,220}background-position:\s*var\(--dream-skin-home-art-position,\s*right center\) !important;[\s\S]{0,120}background-size:\s*cover !important;/,
+  "Saber Ice Atelier home screen should fit the wide poster with a right-centered cover crop.",
+);
+assert.match(
+  css,
+  /data-dream-theme-id="preset-saber-ice-atelier"\][\s\S]{0,120}main\.main-surface\.dream-skin-home-shell\s*\{[\s\S]{0,260}radial-gradient\(ellipse at 58% 8%, rgb\(145 205 239 \/ \.12\), transparent 34%\)/,
+  "Saber Ice Atelier home screen should add a subtle ice glow to avoid a blank-looking hero field.",
+);
+assert.match(
+  css,
+  /data-dream-theme-id="preset-saber-ice-atelier"\][\s\S]{0,120}main\.main-surface\.dream-skin-home-shell\s*\{[\s\S]{0,420}rgb\(255 255 255 \/ \.03\)/,
+  "Saber Ice Atelier home screen should keep the artwork visible through a lighter shell veil.",
+);
+assert.match(
+  css,
+  /data-dream-theme-id="preset-saber-ice-atelier"\][\s\S]{0,260}\.dream-skin-home > div:first-child > div:first-child\s*\{[\s\S]{0,240}flex:\s*0 0 auto !important;[\s\S]{0,120}min-height:\s*0 !important;/,
+  "Saber Ice Atelier should not reserve a tall empty slot above the home greeting.",
+);
+assert.match(
+  css,
+  /data-dream-theme-id="preset-saber-ice-atelier"\][\s\S]{0,260}\.dream-skin-home > div:first-child:has\(> \.home-banners:empty\)\s*\{[\s\S]{0,180}height:\s*0 !important;[\s\S]{0,160}overflow:\s*hidden !important;/,
+  "Saber Ice Atelier should collapse Codex's empty home banner wrapper.",
+);
+assert.match(
+  css,
+  /data-dream-theme-id="preset-saber-ice-atelier"\][\s\S]{0,260}\.dream-skin-home > div:has\(\[data-feature="game-source"\]\)\s*\{[\s\S]{0,180}padding-top:\s*clamp\(38px, 5\.9cqh, 68px\) !important;[\s\S]{0,120}transform:\s*translateY\(-64px\) !important;/,
+  "Saber Ice Atelier should lift the home title and suggestion cards by roughly one card height.",
+);
+assert.match(
+  css,
+  /data-dream-theme-id="preset-saber-ice-atelier"\][\s\S]{0,260}\.dream-skin-home > div:has\(\[data-feature="game-source"\]\) > div:first-child\s*\{[\s\S]{0,240}align-items:\s*flex-start !important;[\s\S]{0,160}padding-bottom:\s*0 !important;/,
+  "Saber Ice Atelier should stop the native home title cluster from bottom-centering.",
+);
+assert.match(
+  css,
+  /data-dream-theme-id="preset-saber-ice-atelier"\][\s\S]{0,260}\.dream-skin-home div:has\(> \.group\\\/home-suggestions\)\s*\{[\s\S]{0,260}width:\s*min\(720px, 62cqw\) !important;[\s\S]{0,180}margin-top:\s*clamp\(26px, 3\.2cqh, 40px\) !important;/,
+  "Saber Ice Atelier should keep the home suggestions container wide enough that Codex does not hide later cards.",
+);
+assert.match(
+  css,
+  /data-dream-theme-id="preset-saber-ice-atelier"\][\s\S]{0,260}\.dream-skin-home \.group\\\/home-suggestions \[class\*="grid-cols-"\]\s*\{[\s\S]{0,220}flex-direction:\s*column !important;[\s\S]{0,160}width:\s*720px !important;/,
+  "Saber Ice Atelier should keep Codex's inner suggestion grid wide enough for four cards while stacking its children vertically.",
+);
+assert.doesNotMatch(
+  css,
+  /grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\) !important;/,
+  "Saber Ice Atelier must not force the home suggestion container into a two-column grid.",
+);
+assert.match(
+  css,
+  /data-dream-card-art-count="4"\][\s\S]{0,260}button\[data-dream-card-index\]\s*\{[\s\S]{0,260}max-width:\s*300px !important;[\s\S]{0,160}min-height:\s*58px !important;/,
+  "Saber Ice Atelier home action cards should be narrow enough to form a compact vertical list.",
+);
+assert.match(
+  css,
+  /data-dream-theme-id="preset-saber-ice-atelier"\][\s\S]{0,260}\.dream-skin-home > div:first-child > div:first-child > div:first-child\s*\{[\s\S]{0,240}height:\s*auto !important;[\s\S]{0,120}min-height:\s*0 !important;/,
+  "Saber Ice Atelier home greeting panel should use natural content height.",
 );
 assert.match(
   css,
@@ -163,6 +233,16 @@ assert.match(
   css,
   /\[data-feature="game-source"\]::before\s*\{[\s\S]{0,520}white-space:\s*pre !important;/,
   "Each line of the Saber Ice Atelier display title should remain unwrapped.",
+);
+assert.match(
+  css,
+  /\[data-feature="game-source"\]\s*\{[\s\S]{0,260}text-align:\s*left !important;/,
+  "Saber Ice Atelier should left-align the home title.",
+);
+assert.match(
+  css,
+  /\[data-feature="game-source"\]::before\s*\{[\s\S]{0,520}text-align:\s*left !important;/,
+  "Saber Ice Atelier display title lines should stay left-aligned.",
 );
 assert.match(
   css,
@@ -459,9 +539,10 @@ function createFixture(theme, {
     clearTimeout(id) { timers.delete(id); },
     cancelAnimationFrame() {},
   };
-  const payloadFor = (nextTheme, cssText = ".fixture { color: blue; }", cardArt = [], sidebarEmblem = null, environmentCardArt = null, filePanelArt = null, reviewPanelArt = null, animatedOverlay = null) => template
+  const payloadFor = (nextTheme, cssText = ".fixture { color: blue; }", homeArt = null, cardArt = [], sidebarEmblem = null, environmentCardArt = null, filePanelArt = null, reviewPanelArt = null, animatedOverlay = null) => template
     .replace("__DREAM_SKIN_CSS_JSON__", JSON.stringify(cssText))
     .replace("__DREAM_SKIN_ART_JSON__", JSON.stringify("data:image/png;base64,AA=="))
+    .replace("__DREAM_SKIN_HOME_ART_JSON__", JSON.stringify(homeArt))
     .replace("__DREAM_SKIN_CARD_ART_JSON__", JSON.stringify(cardArt))
     .replace("__DREAM_SKIN_SIDEBAR_EMBLEM_JSON__", JSON.stringify(sidebarEmblem))
     .replace("__DREAM_SKIN_ENVIRONMENT_CARD_ART_JSON__", JSON.stringify(environmentCardArt))
@@ -518,13 +599,27 @@ assert.equal(defaults.attributes.get("data-dream-art-safe-area"), "center");
 assert.equal(defaults.attributes.get("data-dream-art-task-mode"), "ambient");
 assert.equal(defaults.attributes.get("data-dream-art-ready"), "false");
 assert.equal(defaults.rootStyle.values.get("--dream-art-position"), "50.00% 50.00%");
+const homeArtTheme = {
+  id: "home-art-contract",
+  appearance: "light",
+  art: { safeArea: "left", taskMode: "ambient", focusX: 0.82, focusY: 0.74 },
+  homeArt: { focusX: 1, focusY: 0.5 },
+};
+const homeArt = createFixture(homeArtTheme);
+vm.runInNewContext(homeArt.payloadFor(homeArtTheme, ".fixture { color: blue; }", "data:image/png;base64,AA=="), homeArt.context);
+assert.equal(homeArt.rootStyle.values.get("--dream-skin-art"), 'url("blob:fixture-1")');
+assert.equal(homeArt.rootStyle.values.get("--dream-skin-home-art"), 'url("blob:fixture-2")');
+assert.equal(homeArt.rootStyle.values.get("--dream-skin-art-position"), "82.00% 74.00%");
+assert.equal(homeArt.rootStyle.values.get("--dream-skin-home-art-position"), "100.00% 50.00%");
+assert.equal(homeArt.window.__CODEX_DREAM_SKIN_STATE__.cleanup(), true);
+assert.deepEqual(homeArt.revokedUrls, ["blob:fixture-1", "blob:fixture-2"]);
 const cardArtTheme = {
   id: "card-art-contract",
   appearance: "light",
   art: { safeArea: "left", taskMode: "ambient" },
 };
 const cardArt = createFixture(cardArtTheme);
-vm.runInNewContext(cardArt.payloadFor(cardArtTheme, ".fixture { color: blue; }", [
+vm.runInNewContext(cardArt.payloadFor(cardArtTheme, ".fixture { color: blue; }", null, [
   "data:image/png;base64,AA==",
   "data:image/png;base64,AA==",
   "data:image/png;base64,AA==",
@@ -534,17 +629,17 @@ assert.equal(cardArt.attributes.get("data-dream-card-art-count"), "4");
 assert.equal(cardArt.rootStyle.values.get("--dream-skin-card-art-1"), 'url("blob:fixture-2")');
 assert.equal(cardArt.rootStyle.values.get("--dream-skin-card-art-4"), 'url("blob:fixture-5")');
 const sidebarEmblem = createFixture(cardArtTheme);
-vm.runInNewContext(sidebarEmblem.payloadFor(cardArtTheme, ".fixture { color: blue; }", [], "data:image/png;base64,AA=="), sidebarEmblem.context);
+vm.runInNewContext(sidebarEmblem.payloadFor(cardArtTheme, ".fixture { color: blue; }", null, [], "data:image/png;base64,AA=="), sidebarEmblem.context);
 assert.equal(sidebarEmblem.rootStyle.values.get("--dream-skin-sidebar-emblem"), 'url("blob:fixture-2")');
 assert.ok(sidebarEmblem.nodes.has("codex-dream-skin-sidebar-emblem"));
 const environmentCardArt = createFixture(cardArtTheme);
-vm.runInNewContext(environmentCardArt.payloadFor(cardArtTheme, ".fixture { color: blue; }", [], null, "data:image/png;base64,AA=="), environmentCardArt.context);
+vm.runInNewContext(environmentCardArt.payloadFor(cardArtTheme, ".fixture { color: blue; }", null, [], null, "data:image/png;base64,AA=="), environmentCardArt.context);
 assert.equal(environmentCardArt.rootStyle.values.get("--dream-skin-environment-card-art"), 'url("blob:fixture-2")');
 const filePanelArt = createFixture(cardArtTheme);
-vm.runInNewContext(filePanelArt.payloadFor(cardArtTheme, ".fixture { color: blue; }", [], null, null, "data:image/png;base64,AA=="), filePanelArt.context);
+vm.runInNewContext(filePanelArt.payloadFor(cardArtTheme, ".fixture { color: blue; }", null, [], null, null, "data:image/png;base64,AA=="), filePanelArt.context);
 assert.equal(filePanelArt.rootStyle.values.get("--dream-skin-file-panel-art"), 'url("blob:fixture-2")');
 const reviewPanelArt = createFixture(cardArtTheme);
-vm.runInNewContext(reviewPanelArt.payloadFor(cardArtTheme, ".fixture { color: blue; }", [], null, null, null, "data:image/png;base64,AA=="), reviewPanelArt.context);
+vm.runInNewContext(reviewPanelArt.payloadFor(cardArtTheme, ".fixture { color: blue; }", null, [], null, null, null, "data:image/png;base64,AA=="), reviewPanelArt.context);
 assert.equal(reviewPanelArt.rootStyle.values.get("--dream-skin-review-panel-art"), 'url("blob:fixture-2")');
 const sidebarRouteExit = createFixture(cardArtTheme);
 vm.runInNewContext(sidebarRouteExit.payload, sidebarRouteExit.context);
@@ -576,6 +671,7 @@ const animatedOverlay = createFixture(cardArtTheme);
 vm.runInNewContext(animatedOverlay.payloadFor(
   cardArtTheme,
   ".fixture { color: blue; }",
+  null,
   [],
   null,
   null,

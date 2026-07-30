@@ -9,6 +9,7 @@ repository. It contains the complete Saber theme pack:
 
 - `theme.json`: theme metadata, palette, layout hints, and optional art slots
 - `background.png`: 3840x2160 main Saber background source
+- `home-background.png`: wide home poster used only on the Codex home route
 - `card-*.webp`: home suggestion card art
 - `sidebar-emblem.png`: sidebar decoration
 - `environment-card-canopy.png`: home environment card art

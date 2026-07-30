@@ -143,6 +143,7 @@ fi
   [ ! -e "$themes/preset-midnight-aurora" ] || exit 1
   [ -f "$themes/preset-saber-ice-atelier/theme.json" ] || exit 1
   [ -f "$themes/preset-saber-ice-atelier/background.png" ] || exit 1
+  [ -f "$themes/preset-saber-ice-atelier/home-background.png" ] || exit 1
   [ -f "$themes/custom-keepme/theme.json" ] || exit 1
   seeded="$(/usr/bin/find "$themes" -maxdepth 1 -type d -name "preset-*" | /usr/bin/wc -l | /usr/bin/tr -d " ")"
   [ "$seeded" = "1" ] || exit 1
@@ -154,8 +155,9 @@ SWITCH_HOME="$TMP/switch-home"
 SWITCH_STATE="$SWITCH_HOME/Library/Application Support/CodexDreamSkinStudio"
 /bin/mkdir -p "$SWITCH_STATE/themes/preset-switch-fixture" "$SWITCH_STATE/theme"
 /bin/cp "$ROOT/assets/portal-hero.png" "$SWITCH_STATE/themes/preset-switch-fixture/background.png"
+/bin/cp "$ROOT/assets/portal-hero.png" "$SWITCH_STATE/themes/preset-switch-fixture/home-background.png"
 /usr/bin/printf '%s\n' \
-  '{"schemaVersion":1,"id":"preset-switch-fixture","name":"切换测试","image":"background.png"}' \
+  '{"schemaVersion":1,"id":"preset-switch-fixture","name":"切换测试","image":"background.png","homeImage":"home-background.png"}' \
   > "$SWITCH_STATE/themes/preset-switch-fixture/theme.json"
 /usr/bin/printf '%s\n' '{"schemaVersion":1,"id":"old","name":"旧主题","image":"old.png"}' \
   > "$SWITCH_STATE/theme/theme.json"
@@ -169,6 +171,8 @@ fi
   "$ROOT/scripts/switch-theme-macos.sh" --id preset-switch-fixture --no-apply >/dev/null
 /usr/bin/cmp -s "$SWITCH_STATE/theme/background.png" \
   "$SWITCH_STATE/themes/preset-switch-fixture/background.png"
+/usr/bin/cmp -s "$SWITCH_STATE/theme/home-background.png" \
+  "$SWITCH_STATE/themes/preset-switch-fixture/home-background.png"
 [ ! -e "$SWITCH_STATE/theme/old.png" ]
 "$NODE" -e '
   const fs = require("fs");
