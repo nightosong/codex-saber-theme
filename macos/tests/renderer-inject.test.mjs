@@ -313,8 +313,8 @@ assert.equal(
 );
 assert.equal(
   saberPreset.backgroundVariants?.length,
-  4,
-  "Saber Ice Atelier should ship daily-life full-body background variants for rotation.",
+  12,
+  "Saber Ice Atelier should ship twelve daily-life full-body background variants for rotation.",
 );
 assert.deepEqual(
   saberPreset.backgroundRotation,

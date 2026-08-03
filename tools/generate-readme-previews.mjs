@@ -2,20 +2,35 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { createRequire } from "node:module";
-
-const require = createRequire(import.meta.url);
-const { chromium } = require("playwright");
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, "..");
 const presetDir = path.join(repoRoot, "macos", "presets", "preset-saber-ice-atelier");
 const docsImageDir = path.join(repoRoot, "docs", "images");
 const workDir = path.join(repoRoot, "output", "readme-previews");
+const execFileAsync = promisify(execFile);
 
 const viewport = { width: 1600, height: 1000 };
+const variantsViewport = { width: 1800, height: 702 };
 
 const asset = (name) => pathToFileURL(path.join(presetDir, name)).href;
+
+const backgroundVariants = [
+  ["bg01", "bg01-side-sitting.webp"],
+  ["bg02", "bg02-floor-sit-folded.webp"],
+  ["bg03", "bg03-kneeling-seiza.webp"],
+  ["bg04", "bg04-prone-reading.webp"],
+  ["bg05", "bg05-outward-side-lying.webp"],
+  ["bg06", "bg06-outward-prone.webp"],
+  ["bg07", "bg07-outward-kneeling.webp"],
+  ["bg08", "bg08-outward-side-sit.webp"],
+  ["bg09", "bg09-daily-hug-knees.webp"],
+  ["bg10", "bg10-daily-reclining-legfill.webp"],
+  ["bg11", "bg11-daily-kneel-hipcurve.webp"],
+  ["bg12", "bg12-daily-side-lying-head-hand.webp"],
+];
 
 const chromeCandidates = [
   process.env.CHROME,
@@ -35,6 +50,17 @@ async function findChrome() {
     }
   }
   return null;
+}
+
+async function convertPngToJpeg(pngPath, imagePath) {
+  await execFileAsync("/usr/bin/sips", [
+    "-s",
+    "format",
+    "jpeg",
+    pngPath,
+    "--out",
+    imagePath,
+  ]);
 }
 
 function baseStyles() {
@@ -449,10 +475,10 @@ function chatHtml() {
     <style>
       ${baseStyles()}
       .window {
-        background-image: url("${asset("background.png")}");
+        background-image: url("${asset("bg08-outward-side-sit.webp")}");
         background-repeat: no-repeat;
-        background-position: right bottom;
-        background-size: auto 90%;
+        background-position: center;
+        background-size: cover;
       }
       .main {
         background: linear-gradient(90deg, rgba(255,255,255,.96), rgba(255,255,255,.82) 60%, rgba(255,255,255,.10));
@@ -582,50 +608,148 @@ function chatHtml() {
   </html>`;
 }
 
-async function renderPreview(page, html, htmlPath, imagePath) {
+function variantsGridHtml(items) {
+  return `<!doctype html>
+  <html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      * { box-sizing: border-box; }
+      html, body {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+      }
+      body {
+        background: #f6fbff;
+        font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Hiragino Sans GB", sans-serif;
+      }
+      .board {
+        width: ${variantsViewport.width}px;
+        height: ${variantsViewport.height}px;
+        padding: 18px;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        grid-template-rows: repeat(2, 1fr);
+        gap: 12px;
+        background:
+          radial-gradient(ellipse at 78% 4%, rgba(145, 205, 239, .16), transparent 34%),
+          linear-gradient(135deg, #fbfeff, #eef8ff);
+      }
+      .cell {
+        position: relative;
+        overflow: hidden;
+        border: 1px solid rgba(111, 174, 220, .32);
+        border-radius: 16px;
+        background: #eef7ff;
+        box-shadow: 0 12px 30px rgba(68, 112, 146, .12), inset 0 1px rgba(255,255,255,.72);
+      }
+      .cell img {
+        display: block;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+      .cell::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        background:
+          linear-gradient(180deg, rgba(255,255,255,.18), transparent 26%),
+          linear-gradient(90deg, rgba(255,255,255,.14), transparent 34%);
+      }
+      .label {
+        position: absolute;
+        z-index: 1;
+        top: 12px;
+        left: 12px;
+        height: 28px;
+        padding: 0 12px;
+        display: inline-flex;
+        align-items: center;
+        border: 1px solid rgba(111, 174, 220, .36);
+        border-radius: 999px;
+        background: rgba(255, 255, 255, .78);
+        color: #215f92;
+        font-size: 14px;
+        font-weight: 760;
+        letter-spacing: .02em;
+        box-shadow: 0 8px 18px rgba(68, 112, 146, .10);
+      }
+    </style>
+  </head>
+  <body>
+    <section class="board">
+      ${items.map(([label, image]) => `
+        <figure class="cell">
+          <img src="${asset(image)}" alt="${label}" />
+          <figcaption class="label">${label}</figcaption>
+        </figure>
+      `).join("")}
+    </section>
+  </body>
+  </html>`;
+}
+
+async function renderPreview(html, htmlPath, imagePath, size = viewport) {
   await fs.writeFile(htmlPath, html, "utf8");
-  await page.goto(pathToFileURL(htmlPath).href, { waitUntil: "networkidle" });
-  await page.evaluate(() => document.fonts.ready);
-  await page.screenshot({
-    path: imagePath,
-    type: "jpeg",
-    quality: 92,
-    fullPage: false,
-  });
+
+  const executablePath = await findChrome();
+  if (!executablePath) {
+    throw new Error("Chrome or Chromium is required to render README previews.");
+  }
+
+  const tmpPng = path.join(workDir, `${path.basename(imagePath, path.extname(imagePath))}.tmp.png`);
+  await execFileAsync(executablePath, [
+    "--headless=new",
+    "--disable-gpu",
+    `--window-size=${size.width},${size.height}`,
+    "--virtual-time-budget=10000",
+    `--screenshot=${tmpPng}`,
+    pathToFileURL(htmlPath).href,
+  ]);
+
+  if (/\.(jpe?g)$/i.test(imagePath)) {
+    await convertPngToJpeg(tmpPng, imagePath);
+    await fs.rm(tmpPng, { force: true });
+    return;
+  }
+
+  await fs.rename(tmpPng, imagePath);
 }
 
 async function main() {
   await fs.mkdir(docsImageDir, { recursive: true });
   await fs.mkdir(workDir, { recursive: true });
 
-  const executablePath = await findChrome();
-  const browser = await chromium.launch({
-    ...(executablePath ? { executablePath } : {}),
-    headless: true,
-  });
-  const context = await browser.newContext({
-    viewport,
-    deviceScaleFactor: 1,
-  });
-  const page = await context.newPage();
-
   await renderPreview(
-    page,
     homeHtml(),
     path.join(workDir, "saber-home-preview.html"),
     path.join(docsImageDir, "saber-home-preview.jpg"),
   );
   await renderPreview(
-    page,
     chatHtml(),
     path.join(workDir, "saber-chat-preview.html"),
     path.join(docsImageDir, "saber-chat-preview.jpg"),
   );
-
-  await browser.close();
+  await renderPreview(
+    variantsGridHtml(backgroundVariants.slice(0, 6)),
+    path.join(workDir, "saber-background-variants-01-06.html"),
+    path.join(docsImageDir, "saber-background-variants-01-06.jpg"),
+    variantsViewport,
+  );
+  await renderPreview(
+    variantsGridHtml(backgroundVariants.slice(6, 12)),
+    path.join(workDir, "saber-background-variants-07-12.html"),
+    path.join(docsImageDir, "saber-background-variants-07-12.jpg"),
+    variantsViewport,
+  );
   console.log("Generated README previews:");
   console.log(path.join(docsImageDir, "saber-home-preview.jpg"));
   console.log(path.join(docsImageDir, "saber-chat-preview.jpg"));
+  console.log(path.join(docsImageDir, "saber-background-variants-01-06.jpg"));
+  console.log(path.join(docsImageDir, "saber-background-variants-07-12.jpg"));
 }
 
 main().catch((error) => {

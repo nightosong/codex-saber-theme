@@ -18,6 +18,12 @@ Current version: `0.0.1`
 
 ![Codex Saber Theme chat preview](docs/images/saber-chat-preview.jpg)
 
+### Background rotation
+
+![Codex Saber Theme background variants 01-06](docs/images/saber-background-variants-01-06.jpg)
+
+![Codex Saber Theme background variants 07-12](docs/images/saber-background-variants-07-12.jpg)
+
 ## Use
 
 Open this repository in Codex and send:
