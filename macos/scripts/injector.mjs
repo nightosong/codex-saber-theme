@@ -12,7 +12,7 @@ const SKIN_VERSION = "0.0.1";
 const LOOPBACK_HOSTS = new Set(["127.0.0.1", "localhost", "[::1]"]);
 const CDP_ID_PATTERN = /^[A-Za-z0-9._-]{1,200}$/;
 const MAX_ART_BYTES = 16 * 1024 * 1024;
-const MAX_BACKGROUND_VARIANT_COUNT = 8;
+const MAX_BACKGROUND_VARIANT_COUNT = 12;
 const MAX_BACKGROUND_VARIANT_BYTES = 4 * 1024 * 1024;
 const MAX_CARD_ART_COUNT = 4;
 const MAX_CARD_ART_BYTES = 4 * 1024 * 1024;
@@ -215,7 +215,7 @@ async function listAppTargets(port) {
 async function probeSession(session) {
   return session.evaluate(`(() => {
     const markers = {
-      shell: Boolean(document.querySelector('main.main-surface')),
+      shell: Boolean(document.querySelector('main')),
       sidebar: Boolean(document.querySelector('aside.app-shell-left-panel')),
       composer: Boolean(document.querySelector('.composer-surface-chrome')),
       main: Boolean(document.querySelector('[role="main"]')),
@@ -1127,7 +1127,7 @@ async function verifySession(session) {
     const hero = box(home?.firstElementChild?.firstElementChild?.firstElementChild);
     const homeTitle = box(home?.querySelector('[data-feature="game-source"]'));
     const projectButton = box(home?.querySelector('.group\\\\/project-selector > button'));
-    const shell = box(document.querySelector('main.main-surface'));
+    const shell = box(document.querySelector('main'));
     const composer = box(document.querySelector('.composer-surface-chrome'));
     const sidebar = box(document.querySelector('aside.app-shell-left-panel'));
     const chrome = document.getElementById('codex-dream-skin-chrome');
@@ -1269,7 +1269,7 @@ export function earlyPayloadFor(payload, revision) {
     const install = () => {
       if (window[generationKey] !== generation) { stop(); return true; }
       if (!document.documentElement) return false;
-      const shell = document.querySelector('main.main-surface');
+      const shell = document.querySelector('main');
       const sidebar = document.querySelector('aside.app-shell-left-panel');
       if (!shell || !sidebar) return false;
       stop();

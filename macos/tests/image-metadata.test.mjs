@@ -29,9 +29,9 @@ const saber = await fs.readFile(path.join(
   macosRoot,
   "presets",
   "preset-saber-ice-atelier",
-  "background.png",
+  "bg00-standing.webp",
 ));
-assert.deepEqual(readImageMetadata(saber, ".png"), {
+assert.deepEqual(readImageMetadata(saber, ".webp"), {
   width: 3840,
   height: 2160,
   ratio: 3840 / 2160,

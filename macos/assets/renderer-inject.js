@@ -706,6 +706,9 @@
     if (!root) return;
     shell ||= root.getAttribute(SHELL_ATTR) || resolvedShell();
     const shellMain = document.querySelector("main.main-surface") || document.querySelector("main");
+    if (shellMain && !shellMain.classList.contains("main-surface")) {
+      shellMain.classList.add("main-surface", "dream-skin-main-surface-compat");
+    }
     const homeIndicator = document.querySelector('[data-testid="home-icon"]');
     const home = homeIndicator?.closest('[role="main"]') ||
       [...document.querySelectorAll('[role="main"]')].find((candidate) =>
@@ -945,6 +948,9 @@
     for (const name of THEME_VARIABLES) document.documentElement?.style.removeProperty(name);
     document.querySelectorAll(".dream-skin-home").forEach((node) => node.classList.remove("dream-skin-home"));
     document.querySelectorAll(".dream-skin-home-shell").forEach((node) => node.classList.remove("dream-skin-home-shell"));
+    document.querySelectorAll(".dream-skin-main-surface-compat").forEach((node) => {
+      node.classList.remove("main-surface", "dream-skin-main-surface-compat");
+    });
     document.querySelectorAll(".dream-skin-home-utility").forEach((node) => node.classList.remove("dream-skin-home-utility"));
     document.querySelectorAll(".dream-skin-environment-card").forEach((node) => node.classList.remove("dream-skin-environment-card"));
     document.querySelectorAll(".dream-skin-file-explorer").forEach((node) => node.classList.remove("dream-skin-file-explorer"));

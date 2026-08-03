@@ -16,6 +16,12 @@
 
 ![Codex Saber Theme 聊天页预览](docs/images/saber-chat-preview.jpg)
 
+### 背景轮换
+
+![Codex Saber Theme 背景轮换 01-06](docs/images/saber-background-variants-01-06.jpg)
+
+![Codex Saber Theme 背景轮换 07-12](docs/images/saber-background-variants-07-12.jpg)
+
 ## 使用
 
 将本仓库交给 Codex，然后发送：

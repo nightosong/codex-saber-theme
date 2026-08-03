@@ -8,13 +8,21 @@
   "projectLabel": "◉  选择项目",
   "statusText": "SABER THEME ONLINE",
   "quote": "MAKE SOMETHING WONDERFUL",
-  "image": "background.png",
+  "image": "bg00-standing.webp",
   "homeImage": "home-background.png",
   "backgroundVariants": [
-    "background-side-sitting.webp",
-    "background-floor-sit-folded.webp",
-    "background-kneeling-seiza.webp",
-    "background-prone-reading.webp"
+    "bg01-side-sitting.webp",
+    "bg02-floor-sit-folded.webp",
+    "bg03-kneeling-seiza.webp",
+    "bg04-prone-reading.webp",
+    "bg05-outward-side-lying.webp",
+    "bg06-outward-prone.webp",
+    "bg07-outward-kneeling.webp",
+    "bg08-outward-side-sit.webp",
+    "bg09-daily-hug-knees.webp",
+    "bg10-daily-reclining-legfill.webp",
+    "bg11-daily-kneel-hipcurve.webp",
+    "bg12-daily-side-lying-head-hand.webp"
   ],
   "backgroundRotation": {
     "enabled": true,
