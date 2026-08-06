@@ -8,10 +8,11 @@ This directory contains the bundled runtime theme for Codex Saber Theme.
 repository. It contains the complete Saber theme pack:
 
 - `theme.json`: theme metadata, palette, layout hints, and optional art slots
-- `background.png`: 3840x2160 main Saber background source
+- `bg00-standing.webp`: 3840x2160 main Saber background
+- `bg01-*.webp` through `bg29-*.webp`: 2048x1152 chat
+  background variants used by the rotation engine
 - `home-background.png`: wide home poster used only on the Codex home route
 - `card-*.webp`: home suggestion card art
-- `sidebar-emblem.png`: sidebar decoration
 - `environment-card-canopy.png`: home environment card art
 - `file-panel-archer.png`: file panel art
 - `review-panel-rin.png`: review panel art

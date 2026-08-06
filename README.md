@@ -22,6 +22,12 @@
 
 ![Codex Saber Theme 背景轮换 07-12](docs/images/saber-background-variants-07-12.jpg)
 
+![Codex Saber Theme 背景轮换 13-18](docs/images/saber-background-variants-13-18.jpg)
+
+![Codex Saber Theme 背景轮换 19-24](docs/images/saber-background-variants-19-24.jpg)
+
+![Codex Saber Theme 背景轮换 25-29](docs/images/saber-background-variants-25-29.jpg)
+
 ## 使用
 
 将本仓库交给 Codex，然后发送：
