@@ -10,7 +10,7 @@ if (!sourceDirArg || !stageDirArg) {
 const MAX_CONFIG_BYTES = 1024 * 1024;
 const MAX_IMAGE_BYTES = 16 * 1024 * 1024;
 const MAX_ANIMATED_OVERLAY_BYTES = 6 * 1024 * 1024;
-const MAX_BACKGROUND_VARIANT_COUNT = 12;
+const MAX_BACKGROUND_VARIANT_COUNT = 29;
 const MAX_CARD_ART_COUNT = 4;
 const OPEN_FLAGS = fsConstants.O_RDONLY | (fsConstants.O_NOFOLLOW ?? 0);
 
@@ -106,7 +106,7 @@ async function main() {
   }
   const backgroundVariants = theme.backgroundVariants === undefined ? [] : theme.backgroundVariants;
   if (!Array.isArray(backgroundVariants) || backgroundVariants.length > MAX_BACKGROUND_VARIANT_COUNT) {
-    throw new Error("Theme backgroundVariants must contain at most twelve image filenames");
+    throw new Error("Theme backgroundVariants must contain at most twenty-nine image filenames");
   }
   const sidebarEmblem = theme.sidebarEmblem === undefined ? null : theme.sidebarEmblem;
   if (sidebarEmblem !== null && (typeof sidebarEmblem !== "string" || !sidebarEmblem)) {

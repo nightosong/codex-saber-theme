@@ -8,6 +8,9 @@
   const REVIEW_PANEL_ART_ID = "codex-dream-skin-review-panel-art";
   const RIN_OCCLUSION_ID = "codex-dream-skin-rin-occlusion";
   const ANIMATED_OVERLAY_ID = "codex-dream-skin-animated-overlay";
+  const BACKGROUND_CROSSFADE_ID = "codex-dream-skin-background-crossfade";
+  const BACKGROUND_CROSSFADE_VISIBLE_CLASS = "dream-skin-background-crossfade-visible";
+  const SIDEBAR_ART_CROSSFADE_ATTR = "data-dream-sidebar-art-crossfade";
   const SHELL_ATTR = "data-dream-shell";
   const THEME_ATTR = "data-dream-theme-id";
   const ART_ATTRS = [
@@ -15,7 +18,7 @@
     "data-dream-art-wide", "data-dream-art-safe", "data-dream-task-mode",
     "data-dream-art-safe-area", "data-dream-art-task-mode", "data-dream-art-aspect",
     "data-dream-art-ready", "data-dream-card-art-count",
-    "data-dream-background-rotation", "data-dream-background-index",
+    "data-dream-background-rotation", "data-dream-background-index", SIDEBAR_ART_CROSSFADE_ATTR,
   ];
   const VERSION = __DREAM_SKIN_VERSION_JSON__;
   const STYLE_REVISION = __DREAM_SKIN_STYLE_REVISION_JSON__;
@@ -34,7 +37,8 @@
     "--ds-text-rgb", "--ds-muted-rgb", "--ds-line-rgb",
     "--dream-art-focus-x", "--dream-art-focus-y", "--dream-art-position",
     "--dream-skin-focus-x", "--dream-skin-focus-y", "--dream-skin-art-position",
-    "--dream-skin-home-art", "--dream-skin-home-art-position",
+    "--dream-skin-art", "--dream-skin-home-art", "--dream-skin-home-art-position",
+    "--dream-skin-sidebar-next-art",
     "--dream-skin-name", "--dream-skin-tagline", "--dream-skin-project-prefix",
     "--dream-skin-project-label", "--dream-skin-card-art-1", "--dream-skin-card-art-2",
     "--dream-skin-card-art-3", "--dream-skin-card-art-4", "--dream-skin-sidebar-emblem",
@@ -98,6 +102,7 @@
   if (previous?.resizeObserver) previous.resizeObserver.disconnect();
   if (previous?.timer) clearInterval(previous.timer);
   if (previous?.backgroundRotationTimer) clearTimeout(previous.backgroundRotationTimer);
+  if (previous?.backgroundCrossfadeTimer) clearTimeout(previous.backgroundCrossfadeTimer);
   if (previous?.scheduler?.timeout) clearTimeout(previous.scheduler.timeout);
   if (previous?.scheduler?.frame != null && typeof cancelAnimationFrame === "function") {
     cancelAnimationFrame(previous.scheduler.frame);
@@ -141,12 +146,15 @@
     ? THEME.backgroundRotation : {};
   const backgroundRotationIntervalMinutes = Number.isFinite(rawBackgroundRotation.intervalMinutes)
     ? Math.min(24 * 60, Math.max(1, rawBackgroundRotation.intervalMinutes)) : 60;
+  const backgroundRotationTransitionMs = Number.isFinite(rawBackgroundRotation.transitionMs)
+    ? Math.min(4000, Math.max(0, rawBackgroundRotation.transitionMs)) : 1200;
   const backgroundRotation = {
     enabled: rawBackgroundRotation.enabled === true && backgroundVariantUrls.length > 0,
     intervalMs: backgroundRotationIntervalMinutes * 60 * 1000,
     intervalMinutes: backgroundRotationIntervalMinutes,
     mode: rawBackgroundRotation.mode === "sequence" ? "sequence" : "random",
     includeDefault: rawBackgroundRotation.includeDefault !== false,
+    transitionMs: backgroundRotationTransitionMs,
   };
   const backgroundArtUrls = [
     ...(backgroundRotation.includeDefault && artUrl ? [artUrl] : []),
@@ -158,6 +166,7 @@
     ? backgroundArtUrls[activeBackgroundArtIndex] || artUrl
     : artUrl;
   let backgroundRotationTimer = null;
+  let backgroundCrossfadeTimer = null;
   const selectNextBackgroundArtIndex = () => {
     if (!backgroundRotation.enabled || backgroundArtUrls.length <= 1) return activeBackgroundArtIndex;
     if (backgroundRotation.mode === "sequence") {
@@ -167,14 +176,41 @@
     const rolled = Math.min(optionCount - 1, Math.floor(Math.random() * optionCount));
     return rolled >= activeBackgroundArtIndex ? rolled + 1 : rolled;
   };
-  const applyBackgroundArt = (root, { advance = false } = {}) => {
-    if (backgroundRotation.enabled && backgroundArtUrls.length > 1 && advance) {
-      activeBackgroundArtIndex = selectNextBackgroundArtIndex();
+  const ensureBackgroundCrossfade = () => {
+    if (!document.body) return null;
+    let crossfade = document.getElementById(BACKGROUND_CROSSFADE_ID);
+    if (!crossfade || crossfade.parentElement !== document.body) {
+      crossfade?.remove();
+      crossfade = document.createElement("div");
+      crossfade.id = BACKGROUND_CROSSFADE_ID;
+      crossfade.setAttribute("aria-hidden", "true");
+      document.body.appendChild(crossfade);
     }
-    activeArtUrl = backgroundRotation.enabled
-      ? backgroundArtUrls[activeBackgroundArtIndex] || artUrl
-      : artUrl;
+    return crossfade;
+  };
+  const preloadBackgroundArt = (url, done) => {
+    if (typeof window.Image !== "function") {
+      done();
+      return;
+    }
+    let finished = false;
+    const finish = () => {
+      if (finished) return;
+      finished = true;
+      done();
+    };
+    const image = new window.Image();
+    image.onload = finish;
+    image.onerror = finish;
+    image.src = url;
+  };
+  const commitBackgroundArt = (root, nextArtUrl = activeArtUrl, { preserveSidebarCrossfade = false } = {}) => {
+    activeArtUrl = nextArtUrl;
     if (activeArtUrl) setStyleProperty(root, "--dream-skin-art", `url("${activeArtUrl}")`);
+    if (!preserveSidebarCrossfade) {
+      setStyleProperty(root, "--dream-skin-sidebar-next-art", "none");
+    }
+    setAttribute(root, SIDEBAR_ART_CROSSFADE_ATTR, "false");
     setAttribute(root, "data-dream-background-rotation", backgroundRotation.enabled ? backgroundRotation.mode : "off");
     setAttribute(root, "data-dream-background-index", backgroundRotation.enabled ? activeBackgroundArtIndex : 0);
     const state = window[STATE_KEY];
@@ -182,6 +218,57 @@
       state.activeBackgroundArtIndex = backgroundRotation.enabled ? activeBackgroundArtIndex : 0;
       state.activeBackgroundArtUrl = activeArtUrl;
     }
+  };
+  const applyBackgroundArt = (root, { advance = false } = {}) => {
+    const previousArtUrl = activeArtUrl;
+    if (backgroundRotation.enabled && backgroundArtUrls.length > 1 && advance) {
+      activeBackgroundArtIndex = selectNextBackgroundArtIndex();
+    }
+    const nextArtUrl = backgroundRotation.enabled
+      ? backgroundArtUrls[activeBackgroundArtIndex] || artUrl
+      : artUrl;
+    const shouldCrossfade = Boolean(
+      advance
+      && previousArtUrl
+      && nextArtUrl
+      && previousArtUrl !== nextArtUrl
+      && backgroundRotationTransitionMs > 0
+      && !motionQuery?.matches,
+    );
+    if (!shouldCrossfade) {
+      document.getElementById(BACKGROUND_CROSSFADE_ID)?.classList.remove(BACKGROUND_CROSSFADE_VISIBLE_CLASS);
+      commitBackgroundArt(root, nextArtUrl);
+      return;
+    }
+    const crossfade = ensureBackgroundCrossfade();
+    if (!crossfade) {
+      commitBackgroundArt(root, nextArtUrl);
+      return;
+    }
+    if (backgroundCrossfadeTimer) {
+      clearTimeout(backgroundCrossfadeTimer);
+      backgroundCrossfadeTimer = null;
+    }
+    crossfade.classList.remove(BACKGROUND_CROSSFADE_VISIBLE_CLASS);
+    crossfade.style.setProperty("--dream-skin-background-crossfade-ms", `${backgroundRotationTransitionMs}ms`);
+    crossfade.style.setProperty("background-image", `url("${nextArtUrl}")`);
+    preloadBackgroundArt(nextArtUrl, () => {
+      const state = window[STATE_KEY];
+      if (state?.installToken !== installToken || window[DISABLED_KEY]) return;
+      crossfade.classList.remove(BACKGROUND_CROSSFADE_VISIBLE_CLASS);
+      void crossfade.offsetWidth;
+      crossfade.classList.add(BACKGROUND_CROSSFADE_VISIBLE_CLASS);
+      setStyleProperty(root, "--dream-skin-sidebar-next-art", `url("${nextArtUrl}")`);
+      setAttribute(root, SIDEBAR_ART_CROSSFADE_ATTR, "true");
+      backgroundCrossfadeTimer = setTimeout(() => {
+        backgroundCrossfadeTimer = null;
+        commitBackgroundArt(root, nextArtUrl, { preserveSidebarCrossfade: true });
+        crossfade.classList.remove(BACKGROUND_CROSSFADE_VISIBLE_CLASS);
+        const currentState = window[STATE_KEY];
+        if (currentState?.installToken === installToken) currentState.backgroundCrossfadeTimer = null;
+      }, backgroundRotationTransitionMs + 80);
+      state.backgroundCrossfadeTimer = backgroundCrossfadeTimer;
+    });
   };
   const scheduleBackgroundRotation = () => {
     if (backgroundRotationTimer) clearTimeout(backgroundRotationTimer);
@@ -964,6 +1051,7 @@
     document.getElementById(REVIEW_PANEL_ART_ID)?.remove();
     document.getElementById(RIN_OCCLUSION_ID)?.remove();
     document.getElementById(ANIMATED_OVERLAY_ID)?.remove();
+    document.getElementById(BACKGROUND_CROSSFADE_ID)?.remove();
     document.getElementById(STYLE_ID)?.remove();
     document.getElementById(CHROME_ID)?.remove();
     state?.observer?.disconnect();
@@ -971,6 +1059,7 @@
     state?.resizeObserver?.disconnect();
     if (state?.timer) clearInterval(state.timer);
     if (state?.backgroundRotationTimer) clearTimeout(state.backgroundRotationTimer);
+    if (state?.backgroundCrossfadeTimer) clearTimeout(state.backgroundCrossfadeTimer);
     if (state?.scheduler?.timeout) clearTimeout(state.scheduler.timeout);
     if (state?.scheduler?.frame != null && typeof cancelAnimationFrame === "function") {
       cancelAnimationFrame(state.scheduler.frame);
@@ -1124,6 +1213,7 @@
     resizeObserver,
     timer: null,
     backgroundRotationTimer: null,
+    backgroundCrossfadeTimer: null,
     scheduler,
     resizeHandler,
     mediaQuery,

@@ -57,6 +57,11 @@ assert.match(
 );
 assert.match(
   css,
+  /#codex-dream-skin-background-crossfade\s*\{[\s\S]{0,360}opacity:\s*0;[\s\S]{0,260}transition:\s*opacity var\(--dream-skin-background-crossfade-ms,\s*1200ms\)/,
+  "Background rotation should fade through a dedicated wallpaper layer instead of relying on background-image transitions.",
+);
+assert.match(
+  css,
   /data-dream-art-wide="true"\]\s+\.composer-surface-chrome\s*\{[\s\S]{0,500}backdrop-filter:\s*none !important;/,
   "Wide artwork should use one uniform composer surface without a split blur layer.",
 );
@@ -167,13 +172,13 @@ assert.match(
 );
 assert.match(
   css,
-  /data-dream-theme-id="preset-saber-ice-atelier"\][\s\S]{0,120}main\.main-surface\.dream-skin-home-shell\s*\{[\s\S]{0,260}radial-gradient\(ellipse at 58% 8%, rgb\(145 205 239 \/ \.12\), transparent 34%\)/,
+  /data-dream-theme-id="preset-saber-ice-atelier"\][\s\S]{0,120}main\.main-surface\.dream-skin-home-shell\s*\{[\s\S]{0,260}radial-gradient\(ellipse at 58% 8%, rgb\(145 205 239 \/ \.055\), transparent 34%\)/,
   "Saber Ice Atelier home screen should add a subtle ice glow to avoid a blank-looking hero field.",
 );
 assert.match(
   css,
-  /data-dream-theme-id="preset-saber-ice-atelier"\][\s\S]{0,120}main\.main-surface\.dream-skin-home-shell\s*\{[\s\S]{0,420}rgb\(255 255 255 \/ \.03\)/,
-  "Saber Ice Atelier home screen should keep the artwork visible through a lighter shell veil.",
+  /data-dream-theme-id="preset-saber-ice-atelier"\][\s\S]{0,120}main\.main-surface\.dream-skin-home-shell\s*\{[\s\S]{0,420}rgb\(255 255 255 \/ \.006\)/,
+  "Saber Ice Atelier home screen should keep the artwork clearer through a reduced shell veil.",
 );
 assert.match(
   css,
@@ -204,6 +209,11 @@ assert.match(
   css,
   /data-dream-theme-id="preset-saber-ice-atelier"\][\s\S]{0,260}\.dream-skin-home:has\(\.dream-skin-home-utility\) \.composer-surface-chrome,[\s\S]{0,260}\.dream-skin-home \.dream-skin-home-utility\s*\{[\s\S]{0,120}transform:\s*translateY\(48px\) !important;/,
   "Saber Ice Atelier should lower the joined home composer near the bottom edge.",
+);
+assert.match(
+  css,
+  /data-dream-theme-id="preset-saber-ice-atelier"\][\s\S]{0,260}\.dream-skin-home \[class~="z-0"\]:has\(\.dream-skin-home-utility\)\s*\{[\s\S]{0,120}position:\s*relative !important;[\s\S]{0,120}z-index:\s*40 !important;[\s\S]{0,120}overflow:\s*visible !important;/,
+  "Saber Ice Atelier should keep the home local/worktree picker above the shifted composer hit area.",
 );
 assert.match(
   css,
@@ -313,27 +323,42 @@ assert.equal(
 );
 assert.equal(
   saberPreset.backgroundVariants?.length,
-  12,
-  "Saber Ice Atelier should ship twelve daily-life full-body background variants for rotation.",
+  29,
+  "Saber Ice Atelier should ship twenty-nine daily-life full-body background variants for rotation.",
 );
 assert.deepEqual(
   saberPreset.backgroundRotation,
-  { enabled: true, intervalMinutes: 10, mode: "random", includeDefault: true },
-  "Saber Ice Atelier should rotate between the standing default and daily-life variants every ten minutes.",
+  { enabled: true, intervalMinutes: 2, mode: "random", includeDefault: true },
+  "Saber Ice Atelier should rotate between the standing default and daily-life variants every two minutes.",
 );
 assert.match(
   css,
-  /aside\.app-shell-left-panel\s*\{[\s\S]{0,360}background-image:[\s\S]{0,260}var\(--dream-skin-art\) !important;[\s\S]{0,180}background-position:\s*center,\s*left center !important;/,
-  "Saber Ice Atelier sidebar should crop the left side of the chat background artwork.",
+  /#codex-dream-skin-background-crossfade\s*\{[\s\S]{0,180}background-position:\s*var\(--ds-saber-task-art-position,\s*right center\) !important;[\s\S]{0,120}background-size:\s*max\(100vw,\s*177\.778vh\) auto !important;/,
+  "Saber Ice Atelier should crossfade the same fixed full-window wallpaper crop used by the chat route.",
 );
 assert.match(
   css,
-  /main\.main-surface:not\(\.dream-skin-home-shell\)\s*\{[\s\S]{0,360}background-image:[\s\S]{0,260}var\(--dream-skin-art\) !important;[\s\S]{0,180}background-position:\s*center,\s*var\(--ds-saber-task-art-position,\s*right center\) !important;/,
-  "Saber Ice Atelier task surface should shift the chat background artwork toward the right safe edge.",
+  /aside\.app-shell-left-panel\s*\{[\s\S]{0,360}background-image:[\s\S]{0,220}linear-gradient\(90deg[\s\S]{0,180}var\(--dream-skin-art\)[\s\S]{0,200}background-position:\s*center, left center !important;/,
+  "Saber Ice Atelier sidebar should render the left crop of the selected chat background beneath its readable veil.",
 );
 assert.match(
   css,
-  /main\.main-surface:not\(\.dream-skin-home-shell\)::before\s*\{[\s\S]{0,760}backdrop-filter:\s*blur\(5px\) saturate\(103%\);[\s\S]{0,320}mask-image:\s*linear-gradient/,
+  /aside\.app-shell-left-panel::after\s*\{[\s\S]{0,360}var\(--dream-skin-sidebar-next-art, none\)[\s\S]{0,320}transition:\s*opacity var\(--dream-skin-background-crossfade-ms, 1200ms\)/,
+  "Saber Ice Atelier sidebar should crossfade its own left-cropped wallpaper layer during background rotation.",
+);
+assert.match(
+  css,
+  /main\.main-surface:not\(\.dream-skin-home-shell\)\s*\{[\s\S]{0,360}background-image:[\s\S]{0,260}linear-gradient\(90deg[\s\S]{0,220}background-position:\s*center !important;/,
+  "Saber Ice Atelier task surface should keep only the white veil while the fixed wallpaper fades behind it.",
+);
+assert.match(
+  css,
+  /main\.main-surface:not\(\.dream-skin-home-shell\)\s*\{[\s\S]{0,360}rgb\(255 255 255 \/ \.68\) 38%[\s\S]{0,120}rgb\(255 255 255 \/ \.18\) 56%[\s\S]{0,120}transparent 88%/,
+  "Saber Ice Atelier task surface veil should fade leftward so left-leaning character heads stay visible.",
+);
+assert.match(
+  css,
+  /main\.main-surface:not\(\.dream-skin-home-shell\)::before\s*\{[\s\S]{0,760}backdrop-filter:\s*blur\(4px\) saturate\(103%\);[\s\S]{0,320}mask-image:\s*linear-gradient\(90deg,\s*#000 0%,\s*#000 42%,\s*rgb\(0 0 0 \/ \.35\) 58%,\s*transparent 76%\)/,
   "Saber Ice Atelier should fade the central chat reading area into a softly blurred white veil.",
 );
 assert.match(
@@ -696,11 +721,27 @@ assert.equal(backgroundRotation.attributes.get("data-dream-background-rotation")
 assert.equal(backgroundRotation.window.__CODEX_DREAM_SKIN_STATE__.activeBackgroundArtIndex, 0);
 assert.deepEqual(Array.from(backgroundRotation.window.__CODEX_DREAM_SKIN_STATE__.backgroundVariantUrls),
   ["blob:fixture-2", "blob:fixture-3"]);
-backgroundRotation.flushTimers(Infinity);
+backgroundRotation.flushTimers(60 * 1000);
+const backgroundCrossfadeNode = backgroundRotation.nodes.get("codex-dream-skin-background-crossfade");
+assert.ok(backgroundCrossfadeNode, "Background rotation should create a crossfade wallpaper layer.");
+assert.equal(backgroundCrossfadeNode.style.values.get("background-image"), 'url("blob:fixture-2")');
+assert.equal(backgroundCrossfadeNode.style.values.get("--dream-skin-background-crossfade-ms"), "1200ms");
+assert.equal(backgroundCrossfadeNode.classList.contains("dream-skin-background-crossfade-visible"), true);
+assert.equal(backgroundRotation.rootStyle.values.get("--dream-skin-art"), 'url("blob:fixture-1")',
+  "The committed wallpaper should remain stable while the next image fades in.");
+assert.equal(backgroundRotation.rootStyle.values.get("--dream-skin-sidebar-next-art"), 'url("blob:fixture-2")',
+  "The sidebar should prepare the same next wallpaper while its left crop fades in.");
+assert.equal(backgroundRotation.attributes.get("data-dream-sidebar-art-crossfade"), "true",
+  "The sidebar wallpaper layer should become visible during the shared crossfade.");
+backgroundRotation.flushTimers(1280);
 assert.equal(backgroundRotation.rootStyle.values.get("--dream-skin-art"), 'url("blob:fixture-2")',
-  "The background timer should advance to a full-body daily-life variant.");
+  "The background timer should commit the next full-body variant after the fade finishes.");
+assert.equal(backgroundCrossfadeNode.classList.contains("dream-skin-background-crossfade-visible"), false);
+assert.equal(backgroundRotation.attributes.get("data-dream-sidebar-art-crossfade"), "false",
+  "The sidebar overlay should settle back after its image becomes the committed wallpaper.");
 assert.equal(backgroundRotation.window.__CODEX_DREAM_SKIN_STATE__.activeBackgroundArtIndex, 1);
 assert.equal(backgroundRotation.window.__CODEX_DREAM_SKIN_STATE__.cleanup(), true);
+assert.equal(backgroundRotation.nodes.has("codex-dream-skin-background-crossfade"), false);
 assert.deepEqual(backgroundRotation.revokedUrls, ["blob:fixture-1", "blob:fixture-2", "blob:fixture-3"]);
 const cardArtTheme = {
   id: "card-art-contract",
