@@ -408,8 +408,13 @@ assert.match(
 );
 assert.match(
   css,
-  /\.dream-skin-environment-card[\s\S]{0,160}header\[class~="bg-token-dropdown-background"\]\s*\{[\s\S]{0,160}background:\s*rgb\(255 255 255 \/ \.36\) !important;/,
-  "Environment-card section headers should remain translucent over the canopy.",
+  /\[class~="rounded-3xl"\]\.dream-skin-environment-card\s*\{[\s\S]{0,180}background:\s*rgb\(255 255 255 \/ \.15\) !important;[\s\S]{0,120}box-shadow:\s*none !important;/,
+  "The environment information panel should remain 85% transparent over the chat artwork.",
+);
+assert.match(
+  css,
+  /\[class~="rounded-3xl"\]\.dream-skin-environment-card[\s\S]{0,140}\[class~="bg-token-dropdown-background"\]\s*\{[\s\S]{0,100}background:\s*transparent !important;/,
+  "Environment section headers should not stack another white surface over the translucent panel.",
 );
 assert.match(
   css,
@@ -451,6 +456,7 @@ function createFixture(theme, {
   analysisFixture = null,
   analysisCache = null,
   homeMounted = false,
+  environmentCardMounted = false,
 } = {}) {
   let fixtureShell = nativeShell;
   const nodes = new Map();
@@ -499,6 +505,10 @@ function createFixture(theme, {
   };
   const homeIndicator = {
     closest(selector) { return selector === '[role="main"]' ? homeMain : null; },
+  };
+  const environmentCard = {
+    classList: createClassList(),
+    textContent: "环境信息 变更",
   };
 
   const createElement = (tagName) => {
@@ -565,6 +575,12 @@ function createFixture(theme, {
       if (selector === '[role="main"]') return homeMounted ? [homeMain] : [];
       if (selector === '[role="main"].dream-skin-home') {
         return homeMain.classList.contains("dream-skin-home") ? [homeMain] : [];
+      }
+      if (selector === '[class~="bg-token-dropdown-background"][class~="rounded-3xl"]') {
+        return environmentCardMounted ? [environmentCard] : [];
+      }
+      if (selector === ".dream-skin-environment-card") {
+        return environmentCard.classList.contains("dream-skin-environment-card") ? [environmentCard] : [];
       }
       return [];
     },
@@ -706,6 +722,7 @@ function createFixture(theme, {
     windowListeners,
     mediaQuery,
     motionQuery,
+    environmentCard,
     setNativeShell(value) { fixtureShell = value; },
     setHomeMounted(value) { homeMounted = value; },
   };
@@ -809,6 +826,10 @@ assert.ok(sidebarEmblem.nodes.has("codex-dream-skin-sidebar-emblem"));
 const environmentCardArt = createFixture(cardArtTheme);
 vm.runInNewContext(environmentCardArt.payloadFor(cardArtTheme, ".fixture { color: blue; }", null, [], null, "data:image/png;base64,AA=="), environmentCardArt.context);
 assert.equal(environmentCardArt.rootStyle.values.get("--dream-skin-environment-card-art"), 'url("blob:fixture-2")');
+const transparentEnvironmentCard = createFixture(cardArtTheme, { environmentCardMounted: true });
+vm.runInNewContext(transparentEnvironmentCard.payload, transparentEnvironmentCard.context);
+assert.equal(transparentEnvironmentCard.environmentCard.classList.contains("dream-skin-environment-card"), true,
+  "Environment information should receive its transparent-panel class without an illustration asset.");
 const filePanelArt = createFixture(cardArtTheme);
 vm.runInNewContext(filePanelArt.payloadFor(cardArtTheme, ".fixture { color: blue; }", null, [], null, null, "data:image/png;base64,AA=="), filePanelArt.context);
 assert.equal(filePanelArt.rootStyle.values.get("--dream-skin-file-panel-art"), 'url("blob:fixture-2")');

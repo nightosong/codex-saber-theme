@@ -841,10 +841,10 @@
     }
     if (home) home.classList.add("dream-skin-home");
     const environmentCards = [...document.querySelectorAll('[class~="bg-token-dropdown-background"][class~="rounded-3xl"]')];
-    const environmentCard = environmentCardArtUrl ? environmentCards.find((candidate) => {
+    const environmentCard = environmentCards.find((candidate) => {
       const text = candidate.textContent?.replace(/\s+/g, " ") ?? "";
       return text.includes("环境信息") && text.includes("变更");
-    }) : null;
+    }) ?? null;
     for (const candidate of document.querySelectorAll(".dream-skin-environment-card")) {
       if (candidate !== environmentCard) candidate.classList.remove("dream-skin-environment-card");
     }
