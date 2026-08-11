@@ -111,6 +111,7 @@
   if (previous?.resizeObserver) previous.resizeObserver.disconnect();
   if (previous?.timer) clearInterval(previous.timer);
   if (previous?.routeNavigationTimer) clearTimeout(previous.routeNavigationTimer);
+  if (previous?.routeNavigationSettleTimer) clearTimeout(previous.routeNavigationSettleTimer);
   if (previous?.backgroundRotationTimer) clearTimeout(previous.backgroundRotationTimer);
   if (previous?.backgroundCrossfadeTimer) clearTimeout(previous.backgroundCrossfadeTimer);
   if (previous?.scheduler?.timeout) clearTimeout(previous.scheduler.timeout);
@@ -1093,6 +1094,7 @@
     state?.resizeObserver?.disconnect();
     if (state?.timer) clearInterval(state.timer);
     if (state?.routeNavigationTimer) clearTimeout(state.routeNavigationTimer);
+    if (state?.routeNavigationSettleTimer) clearTimeout(state.routeNavigationSettleTimer);
     if (state?.backgroundRotationTimer) clearTimeout(state.backgroundRotationTimer);
     if (state?.backgroundCrossfadeTimer) clearTimeout(state.backgroundCrossfadeTimer);
     if (state?.scheduler?.timeout) clearTimeout(state.scheduler.timeout);
@@ -1137,16 +1139,30 @@
 
   const scheduler = { timeout: null, frame: null, root: false, route: false, layout: false };
   let routeNavigationTimer = null;
+  let routeNavigationSettleTimer = null;
   const scheduleRouteSync = ({ layout = false } = {}) => {
-    if (routeNavigationTimer) return;
-    routeNavigationTimer = setTimeout(() => {
-      routeNavigationTimer = null;
+    if (!routeNavigationTimer) {
+      routeNavigationTimer = setTimeout(() => {
+        routeNavigationTimer = null;
+        const state = window[STATE_KEY];
+        if (state?.installToken === installToken) state.routeNavigationTimer = null;
+        scheduleEnsure({ route: true, layout });
+      }, 180);
+    }
+    // Codex may replace the main route after its navigation event. Re-check
+    // once after that DOM settles, without restoring a global subtree observer.
+    if (routeNavigationSettleTimer) clearTimeout(routeNavigationSettleTimer);
+    routeNavigationSettleTimer = setTimeout(() => {
+      routeNavigationSettleTimer = null;
       const state = window[STATE_KEY];
-      if (state?.installToken === installToken) state.routeNavigationTimer = null;
+      if (state?.installToken === installToken) state.routeNavigationSettleTimer = null;
       scheduleEnsure({ route: true, layout });
-    }, 180);
+    }, 720);
     const state = window[STATE_KEY];
-    if (state?.installToken === installToken) state.routeNavigationTimer = routeNavigationTimer;
+    if (state?.installToken === installToken) {
+      state.routeNavigationTimer = routeNavigationTimer;
+      state.routeNavigationSettleTimer = routeNavigationSettleTimer;
+    }
   };
   const hidePanelArtForSidebarNavigation = () => {
     document.getElementById(FILE_PANEL_ART_ID)?.remove();
@@ -1299,6 +1315,7 @@
     sidebarNavigationHandler,
     historyHooks,
     routeNavigationTimer,
+    routeNavigationSettleTimer,
     resizeTimer,
     resizing,
     artUrl,

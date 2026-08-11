@@ -445,6 +445,7 @@ function createFixture(theme, {
   nativeShell = "light",
   analysisFixture = null,
   analysisCache = null,
+  homeMounted = false,
 } = {}) {
   let fixtureShell = nativeShell;
   const nodes = new Map();
@@ -485,6 +486,14 @@ function createFixture(theme, {
     getBoundingClientRect() {
       return { ...shellBox };
     },
+  };
+  const homeMain = {
+    classList: createClassList(),
+    querySelector() { return null; },
+    querySelectorAll() { return []; },
+  };
+  const homeIndicator = {
+    closest(selector) { return selector === '[role="main"]' ? homeMain : null; },
   };
 
   const createElement = (tagName) => {
@@ -544,9 +553,16 @@ function createFixture(theme, {
     getElementById(id) { return nodes.get(id) ?? null; },
     querySelector(selector) {
       if (selector === "main.main-surface" || selector === "main") return shellMain;
+      if (selector === '[data-testid="home-icon"]') return homeMounted ? homeIndicator : null;
       return null;
     },
-    querySelectorAll() { return []; },
+    querySelectorAll(selector) {
+      if (selector === '[role="main"]') return homeMounted ? [homeMain] : [];
+      if (selector === '[role="main"].dream-skin-home') {
+        return homeMain.classList.contains("dream-skin-home") ? [homeMain] : [];
+      }
+      return [];
+    },
   };
   const mediaQuery = {
     matches: false,
@@ -686,6 +702,7 @@ function createFixture(theme, {
     mediaQuery,
     motionQuery,
     setNativeShell(value) { fixtureShell = value; },
+    setHomeMounted(value) { homeMounted = value; },
   };
 }
 
@@ -863,12 +880,49 @@ assert.equal(defaultMetrics.routePasses, 1);
 assert.equal(defaultMetrics.layoutReads, 1);
 assert.equal(defaults.observers.length, 1, "Only the bounded appearance observer should remain installed.");
 for (let index = 0; index < 50; index += 1) defaults.window.history.pushState({}, "", `/task/${index}`);
-assert.equal(defaults.timers.size, 1, "Navigation bursts should coalesce into one scheduled ensure.");
+assert.equal(defaults.timers.size, 2, "Navigation bursts should coalesce into a fast and a settled route sync.");
 defaults.flushTimers(180);
 defaults.flushTimers(64);
 assert.equal(defaultMetrics.rootPasses, 1, "Route changes must not recompute root theme tokens.");
 assert.equal(defaultMetrics.routePasses, 2);
 assert.equal(defaultMetrics.layoutReads, 1, "Route changes must not force shell layout reads.");
+defaults.flushTimers(720);
+defaults.flushTimers(64);
+assert.equal(defaultMetrics.rootPasses, 1, "The settled route sync must remain route-only.");
+assert.equal(defaultMetrics.routePasses, 3, "The settled route sync should compensate for async Codex route mounting.");
+
+const delayedHomeRoute = createFixture({
+  id: "delayed-home-route",
+  appearance: "light",
+  art: { safeArea: "left", taskMode: "ambient" },
+});
+vm.runInNewContext(delayedHomeRoute.payload, delayedHomeRoute.context);
+delayedHomeRoute.window.history.pushState({}, "", "/");
+delayedHomeRoute.flushTimers(180);
+delayedHomeRoute.flushTimers(64);
+assert.equal(delayedHomeRoute.nodes.get("codex-dream-skin-chrome").classList.contains("dream-skin-home-shell"), false,
+  "The fast sync must not assume that the home route has mounted already.");
+delayedHomeRoute.setHomeMounted(true);
+delayedHomeRoute.flushTimers(720);
+delayedHomeRoute.flushTimers(64);
+assert.equal(delayedHomeRoute.nodes.get("codex-dream-skin-chrome").classList.contains("dream-skin-home-shell"), true,
+  "The settled sync must apply home styling after Codex mounts the home route asynchronously.");
+assert.equal(delayedHomeRoute.window.__CODEX_DREAM_SKIN_STATE__.cleanup(), true);
+
+const chatRouteExit = createFixture({
+  id: "chat-route-exit",
+  appearance: "light",
+  art: { safeArea: "left", taskMode: "ambient" },
+}, { homeMounted: true });
+vm.runInNewContext(chatRouteExit.payload, chatRouteExit.context);
+assert.equal(chatRouteExit.nodes.get("codex-dream-skin-chrome").classList.contains("dream-skin-home-shell"), true);
+chatRouteExit.setHomeMounted(false);
+chatRouteExit.window.history.pushState({}, "", "/task/example");
+chatRouteExit.flushTimers(180);
+chatRouteExit.flushTimers(64);
+assert.equal(chatRouteExit.nodes.get("codex-dream-skin-chrome").classList.contains("dream-skin-home-shell"), false,
+  "Leaving home must clear the home shell so the chat wallpaper carousel remains visible.");
+assert.equal(chatRouteExit.window.__CODEX_DREAM_SKIN_STATE__.cleanup(), true);
 assert.equal(defaults.resizeObservers.length, 1);
 assert.ok(defaults.resizeObservers[0].target);
 defaults.shellBox.left = 196;
