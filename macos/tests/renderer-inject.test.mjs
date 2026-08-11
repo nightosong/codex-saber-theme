@@ -80,6 +80,21 @@ assert.match(
   /\[class\*="_homeUtilityBar_"\][\s\S]{0,500}dream-skin-home-utility/,
   "The renderer should give the current native home utility bar a stable theme class.",
 );
+assert.doesNotMatch(
+  template,
+  /observer\.observe\(document\.documentElement,\s*\{\s*childList:\s*true,\s*subtree:\s*true/s,
+  "Route synchronization must not observe the entire renderer DOM subtree.",
+);
+assert.doesNotMatch(
+  template,
+  /setInterval\(\(\) => ensure\(\{ root: false, route: true, layout: false \}\)/,
+  "Route synchronization must not rescan the full page on an interval.",
+);
+assert.match(
+  template,
+  /for \(const name of \["pushState", "replaceState"\]\)/,
+  "Route synchronization should be driven by explicit History navigation events.",
+);
 assert.match(
   css,
   /\.dream-skin-home:has\(\.dream-skin-home-utility\)[\s\S]{0,120}\.composer-surface-chrome\s*\{[\s\S]{0,180}border-radius:\s*0 0 22px 22px !important;/,
@@ -321,15 +336,20 @@ assert.equal(
   undefined,
   "Saber Ice Atelier should use its chat background artwork instead of a separate FSN sidebar emblem.",
 );
+assert.deepEqual(
+  saberPreset.cardArt,
+  ["card-archer.webp", "card-lancer.webp", "card-berserker.webp", "card-rider.webp"],
+  "Saber Ice Atelier should keep the four matching class illustrations on its home cards.",
+);
 assert.equal(
   saberPreset.backgroundVariants?.length,
   29,
-  "Saber Ice Atelier should ship twenty-nine daily-life full-body background variants for rotation.",
+  "Saber Ice Atelier should retain the full daily-life background carousel.",
 );
 assert.deepEqual(
   saberPreset.backgroundRotation,
-  { enabled: true, intervalMinutes: 2, mode: "random", includeDefault: true },
-  "Saber Ice Atelier should rotate between the standing default and daily-life variants every two minutes.",
+  { enabled: true, intervalMinutes: 5, transitionMs: 600, mode: "random", includeDefault: true },
+  "Saber Ice Atelier should keep the carousel with a lower-frequency, shorter transition.",
 );
 assert.match(
   css,
@@ -388,8 +408,13 @@ assert.match(
 );
 assert.match(
   css,
-  /\.dream-skin-environment-card[\s\S]{0,160}header\[class~="bg-token-dropdown-background"\]\s*\{[\s\S]{0,160}background:\s*rgb\(255 255 255 \/ \.36\) !important;/,
-  "Environment-card section headers should remain translucent over the canopy.",
+  /\[class~="rounded-3xl"\]\.dream-skin-environment-card\s*\{[\s\S]{0,180}background:\s*rgb\(255 255 255 \/ \.15\) !important;[\s\S]{0,120}box-shadow:\s*none !important;/,
+  "The environment information panel should remain 85% transparent over the chat artwork.",
+);
+assert.match(
+  css,
+  /\[class~="rounded-3xl"\]\.dream-skin-environment-card[\s\S]{0,140}\[class~="bg-token-dropdown-background"\]\s*\{[\s\S]{0,100}background:\s*transparent !important;/,
+  "Environment section headers should not stack another white surface over the translucent panel.",
 );
 assert.match(
   css,
@@ -430,6 +455,8 @@ function createFixture(theme, {
   nativeShell = "light",
   analysisFixture = null,
   analysisCache = null,
+  homeMounted = false,
+  environmentCardMounted = false,
 } = {}) {
   let fixtureShell = nativeShell;
   const nodes = new Map();
@@ -470,6 +497,18 @@ function createFixture(theme, {
     getBoundingClientRect() {
       return { ...shellBox };
     },
+  };
+  const homeMain = {
+    classList: createClassList(),
+    querySelector() { return null; },
+    querySelectorAll() { return []; },
+  };
+  const homeIndicator = {
+    closest(selector) { return selector === '[role="main"]' ? homeMain : null; },
+  };
+  const environmentCard = {
+    classList: createClassList(),
+    textContent: "环境信息 变更",
   };
 
   const createElement = (tagName) => {
@@ -529,9 +568,22 @@ function createFixture(theme, {
     getElementById(id) { return nodes.get(id) ?? null; },
     querySelector(selector) {
       if (selector === "main.main-surface" || selector === "main") return shellMain;
+      if (selector === '[data-testid="home-icon"]') return homeMounted ? homeIndicator : null;
       return null;
     },
-    querySelectorAll() { return []; },
+    querySelectorAll(selector) {
+      if (selector === '[role="main"]') return homeMounted ? [homeMain] : [];
+      if (selector === '[role="main"].dream-skin-home') {
+        return homeMain.classList.contains("dream-skin-home") ? [homeMain] : [];
+      }
+      if (selector === '[class~="bg-token-dropdown-background"][class~="rounded-3xl"]') {
+        return environmentCardMounted ? [environmentCard] : [];
+      }
+      if (selector === ".dream-skin-environment-card") {
+        return environmentCard.classList.contains("dream-skin-environment-card") ? [environmentCard] : [];
+      }
+      return [];
+    },
   };
   const mediaQuery = {
     matches: false,
@@ -546,7 +598,12 @@ function createFixture(theme, {
     removeEventListener(_name, handler) { this.listeners.delete(handler); },
   };
   const revokedUrls = [];
+  const history = {
+    pushState() {},
+    replaceState() {},
+  };
   const window = {
+    history,
     addEventListener(name, handler) { windowListeners.set(name, handler); },
     removeEventListener(name, handler) {
       if (windowListeners.get(name) === handler) windowListeners.delete(name);
@@ -665,7 +722,9 @@ function createFixture(theme, {
     windowListeners,
     mediaQuery,
     motionQuery,
+    environmentCard,
     setNativeShell(value) { fixtureShell = value; },
+    setHomeMounted(value) { homeMounted = value; },
   };
 }
 
@@ -720,7 +779,7 @@ assert.equal(backgroundRotation.rootStyle.values.get("--dream-skin-art"), 'url("
 assert.equal(backgroundRotation.attributes.get("data-dream-background-rotation"), "sequence");
 assert.equal(backgroundRotation.window.__CODEX_DREAM_SKIN_STATE__.activeBackgroundArtIndex, 0);
 assert.deepEqual(Array.from(backgroundRotation.window.__CODEX_DREAM_SKIN_STATE__.backgroundVariantUrls),
-  ["blob:fixture-2", "blob:fixture-3"]);
+  [], "Rotation variants should remain undecoded until one is selected.");
 backgroundRotation.flushTimers(60 * 1000);
 const backgroundCrossfadeNode = backgroundRotation.nodes.get("codex-dream-skin-background-crossfade");
 assert.ok(backgroundCrossfadeNode, "Background rotation should create a crossfade wallpaper layer.");
@@ -740,9 +799,11 @@ assert.equal(backgroundCrossfadeNode.classList.contains("dream-skin-background-c
 assert.equal(backgroundRotation.attributes.get("data-dream-sidebar-art-crossfade"), "false",
   "The sidebar overlay should settle back after its image becomes the committed wallpaper.");
 assert.equal(backgroundRotation.window.__CODEX_DREAM_SKIN_STATE__.activeBackgroundArtIndex, 1);
+assert.deepEqual(Array.from(backgroundRotation.window.__CODEX_DREAM_SKIN_STATE__.backgroundVariantUrls),
+  ["blob:fixture-2"], "Only the active rotation variant should retain a Blob URL.");
 assert.equal(backgroundRotation.window.__CODEX_DREAM_SKIN_STATE__.cleanup(), true);
 assert.equal(backgroundRotation.nodes.has("codex-dream-skin-background-crossfade"), false);
-assert.deepEqual(backgroundRotation.revokedUrls, ["blob:fixture-1", "blob:fixture-2", "blob:fixture-3"]);
+assert.deepEqual(backgroundRotation.revokedUrls, ["blob:fixture-1", "blob:fixture-2"]);
 const cardArtTheme = {
   id: "card-art-contract",
   appearance: "light",
@@ -765,6 +826,10 @@ assert.ok(sidebarEmblem.nodes.has("codex-dream-skin-sidebar-emblem"));
 const environmentCardArt = createFixture(cardArtTheme);
 vm.runInNewContext(environmentCardArt.payloadFor(cardArtTheme, ".fixture { color: blue; }", null, [], null, "data:image/png;base64,AA=="), environmentCardArt.context);
 assert.equal(environmentCardArt.rootStyle.values.get("--dream-skin-environment-card-art"), 'url("blob:fixture-2")');
+const transparentEnvironmentCard = createFixture(cardArtTheme, { environmentCardMounted: true });
+vm.runInNewContext(transparentEnvironmentCard.payload, transparentEnvironmentCard.context);
+assert.equal(transparentEnvironmentCard.environmentCard.classList.contains("dream-skin-environment-card"), true,
+  "Environment information should receive its transparent-panel class without an illustration asset.");
 const filePanelArt = createFixture(cardArtTheme);
 vm.runInNewContext(filePanelArt.payloadFor(cardArtTheme, ".fixture { color: blue; }", null, [], null, null, "data:image/png;base64,AA=="), filePanelArt.context);
 assert.equal(filePanelArt.rootStyle.values.get("--dream-skin-file-panel-art"), 'url("blob:fixture-2")');
@@ -797,6 +862,45 @@ assert.equal(sidebarRouteExit.nodes.has("codex-dream-skin-rin-occlusion"), false
 assert.equal(sidebarRouteExit.window.__CODEX_DREAM_SKIN_STATE__.cleanup(), true);
 assert.equal(sidebarRouteExit.documentListeners.has("pointerdown"), false);
 assert.equal(sidebarRouteExit.documentListeners.has("click"), false);
+const newChatNavigation = createFixture(cardArtTheme);
+vm.runInNewContext(newChatNavigation.payload, newChatNavigation.context);
+const newChatControl = {
+  textContent: "新对话",
+  getAttribute() { return null; },
+  matches() { return false; },
+};
+const newChatTarget = {
+  closest(selector) {
+    if (selector.includes("data-app-shell-sidebar-trigger")) return null;
+    return selector.includes("aside.app-shell-left-panel") ? newChatControl : null;
+  },
+};
+newChatNavigation.documentListeners.get("click")({ target: newChatTarget });
+assert.equal(newChatNavigation.timers.size, 2,
+  "The current New chat sidebar button must schedule fast and settled route syncs.");
+assert.equal(newChatNavigation.window.__CODEX_DREAM_SKIN_STATE__.cleanup(), true);
+const threadNavigation = createFixture(cardArtTheme, { homeMounted: true });
+vm.runInNewContext(threadNavigation.payload, threadNavigation.context);
+assert.equal(threadNavigation.nodes.get("codex-dream-skin-chrome").classList.contains("dream-skin-home-shell"), true);
+threadNavigation.setHomeMounted(false);
+const threadControl = {
+  textContent: "feat: inspect route",
+  getAttribute(name) { return name === "aria-label" ? "feat: inspect route" : null; },
+  hasAttribute(name) { return name === "data-app-action-sidebar-thread-row"; },
+  matches() { return false; },
+};
+const threadTarget = {
+  closest(selector) {
+    if (selector.includes("data-app-shell-sidebar-trigger")) return null;
+    return selector.includes("data-app-action-sidebar-thread-row") ? threadControl : null;
+  },
+};
+threadNavigation.documentListeners.get("pointerdown")({ target: threadTarget });
+threadNavigation.flushTimers(180);
+threadNavigation.flushTimers(64);
+assert.equal(threadNavigation.nodes.get("codex-dream-skin-chrome").classList.contains("dream-skin-home-shell"), false,
+  "Selecting a sidebar thread must clear home styling so the chat carousel becomes visible.");
+assert.equal(threadNavigation.window.__CODEX_DREAM_SKIN_STATE__.cleanup(), true);
 const animatedOverlay = createFixture(cardArtTheme);
 vm.runInNewContext(animatedOverlay.payloadFor(
   cardArtTheme,
@@ -839,12 +943,51 @@ const defaultMetrics = defaults.window.__CODEX_DREAM_SKIN_STATE__.metrics;
 assert.equal(defaultMetrics.rootPasses, 1);
 assert.equal(defaultMetrics.routePasses, 1);
 assert.equal(defaultMetrics.layoutReads, 1);
-for (let index = 0; index < 50; index += 1) defaults.observers[0].callback([]);
-assert.equal(defaults.timers.size, 1, "Mutation bursts should coalesce into one scheduled ensure.");
+assert.equal(defaults.observers.length, 1, "Only the bounded appearance observer should remain installed.");
+for (let index = 0; index < 50; index += 1) defaults.window.history.pushState({}, "", `/task/${index}`);
+assert.equal(defaults.timers.size, 2, "Navigation bursts should coalesce into a fast and a settled route sync.");
+defaults.flushTimers(180);
 defaults.flushTimers(64);
-assert.equal(defaultMetrics.rootPasses, 1, "Subtree mutations must not recompute root theme tokens.");
+assert.equal(defaultMetrics.rootPasses, 1, "Route changes must not recompute root theme tokens.");
 assert.equal(defaultMetrics.routePasses, 2);
-assert.equal(defaultMetrics.layoutReads, 1, "Subtree mutations must not force shell layout reads.");
+assert.equal(defaultMetrics.layoutReads, 1, "Route changes must not force shell layout reads.");
+defaults.flushTimers(720);
+defaults.flushTimers(64);
+assert.equal(defaultMetrics.rootPasses, 1, "The settled route sync must remain route-only.");
+assert.equal(defaultMetrics.routePasses, 3, "The settled route sync should compensate for async Codex route mounting.");
+
+const delayedHomeRoute = createFixture({
+  id: "delayed-home-route",
+  appearance: "light",
+  art: { safeArea: "left", taskMode: "ambient" },
+});
+vm.runInNewContext(delayedHomeRoute.payload, delayedHomeRoute.context);
+delayedHomeRoute.window.history.pushState({}, "", "/");
+delayedHomeRoute.flushTimers(180);
+delayedHomeRoute.flushTimers(64);
+assert.equal(delayedHomeRoute.nodes.get("codex-dream-skin-chrome").classList.contains("dream-skin-home-shell"), false,
+  "The fast sync must not assume that the home route has mounted already.");
+delayedHomeRoute.setHomeMounted(true);
+delayedHomeRoute.flushTimers(720);
+delayedHomeRoute.flushTimers(64);
+assert.equal(delayedHomeRoute.nodes.get("codex-dream-skin-chrome").classList.contains("dream-skin-home-shell"), true,
+  "The settled sync must apply home styling after Codex mounts the home route asynchronously.");
+assert.equal(delayedHomeRoute.window.__CODEX_DREAM_SKIN_STATE__.cleanup(), true);
+
+const chatRouteExit = createFixture({
+  id: "chat-route-exit",
+  appearance: "light",
+  art: { safeArea: "left", taskMode: "ambient" },
+}, { homeMounted: true });
+vm.runInNewContext(chatRouteExit.payload, chatRouteExit.context);
+assert.equal(chatRouteExit.nodes.get("codex-dream-skin-chrome").classList.contains("dream-skin-home-shell"), true);
+chatRouteExit.setHomeMounted(false);
+chatRouteExit.window.history.pushState({}, "", "/task/example");
+chatRouteExit.flushTimers(180);
+chatRouteExit.flushTimers(64);
+assert.equal(chatRouteExit.nodes.get("codex-dream-skin-chrome").classList.contains("dream-skin-home-shell"), false,
+  "Leaving home must clear the home shell so the chat wallpaper carousel remains visible.");
+assert.equal(chatRouteExit.window.__CODEX_DREAM_SKIN_STATE__.cleanup(), true);
 assert.equal(defaults.resizeObservers.length, 1);
 assert.ok(defaults.resizeObservers[0].target);
 defaults.shellBox.left = 196;
@@ -881,11 +1024,11 @@ assert.equal(shellFollow.attributes.get("data-dream-shell"), "light");
 
 defaults.root.className = "";
 defaults.body.setAttribute("data-theme", "dark");
-defaults.observers[1].callback([{ type: "attributes", target: defaults.body }]);
+defaults.observers[0].callback([{ type: "attributes", target: defaults.body }]);
 defaults.flushTimers(64);
 assert.equal(defaults.attributes.get("data-dream-shell"), "dark", "Body theme changes must apply without the fallback interval.");
 const rootPassesAfterThemeChange = defaultMetrics.rootPasses;
-defaults.observers[1].callback([{ type: "attributes", target: defaults.root }]);
+defaults.observers[0].callback([{ type: "attributes", target: defaults.root }]);
 defaults.flushTimers(64);
 assert.equal(defaultMetrics.rootPasses, rootPassesAfterThemeChange, "Repeated native class writes without an appearance change must be ignored.");
 

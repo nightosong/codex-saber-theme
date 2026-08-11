@@ -43,7 +43,8 @@
   ],
   "backgroundRotation": {
     "enabled": true,
-    "intervalMinutes": 2,
+    "intervalMinutes": 5,
+    "transitionMs": 600,
     "mode": "random",
     "includeDefault": true
   },
@@ -53,9 +54,6 @@
     "card-berserker.webp",
     "card-rider.webp"
   ],
-  "environmentCardArt": "environment-card-canopy.png",
-  "filePanelArt": "file-panel-archer.png",
-  "reviewPanelArt": "review-panel-rin.png",
   "appearance": "light",
   "art": {
     "safeArea": "left",
