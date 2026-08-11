@@ -836,6 +836,23 @@ assert.equal(sidebarRouteExit.nodes.has("codex-dream-skin-rin-occlusion"), false
 assert.equal(sidebarRouteExit.window.__CODEX_DREAM_SKIN_STATE__.cleanup(), true);
 assert.equal(sidebarRouteExit.documentListeners.has("pointerdown"), false);
 assert.equal(sidebarRouteExit.documentListeners.has("click"), false);
+const newChatNavigation = createFixture(cardArtTheme);
+vm.runInNewContext(newChatNavigation.payload, newChatNavigation.context);
+const newChatControl = {
+  textContent: "新对话",
+  getAttribute() { return null; },
+  matches() { return false; },
+};
+const newChatTarget = {
+  closest(selector) {
+    if (selector.includes("data-app-shell-sidebar-trigger")) return null;
+    return selector.includes("aside.app-shell-left-panel") ? newChatControl : null;
+  },
+};
+newChatNavigation.documentListeners.get("click")({ target: newChatTarget });
+assert.equal(newChatNavigation.timers.size, 2,
+  "The current New chat sidebar button must schedule fast and settled route syncs.");
+assert.equal(newChatNavigation.window.__CODEX_DREAM_SKIN_STATE__.cleanup(), true);
 const animatedOverlay = createFixture(cardArtTheme);
 vm.runInNewContext(animatedOverlay.payloadFor(
   cardArtTheme,

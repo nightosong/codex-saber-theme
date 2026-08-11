@@ -1184,8 +1184,8 @@
       .replace(/\s+/g, " ")
       .trim();
     const isLink = control.matches?.('a[href], [role="link"]');
-    const isRouteOrSidebarToggle = /^(?:新建任务|拉取请求|已安排|插件|折叠显示|展开显示|new task|pull requests?|scheduled|plugins?|collapse|expand)$/i
-      .test(label);
+    const isRouteOrSidebarToggle = /^(?:新建任务|新对话|拉取请求|已安排|插件|折叠显示|展开显示|new task|new chat|pull requests?|scheduled|plugins?|collapse|expand)$/i
+      .test(label) || /(?:开始新聊天|start(?: a)? new chat)/i.test(label);
     if (isLink || isRouteOrSidebarToggle) {
       hidePanelArtForSidebarNavigation();
       scheduleRouteSync();
