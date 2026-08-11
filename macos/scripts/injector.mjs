@@ -494,6 +494,13 @@ async function loadTheme(themeDir) {
     }
     return value;
   };
+  const transitionMs = (value, name) => {
+    if (value === undefined) return undefined;
+    if (!Number.isInteger(value) || value < 0 || value > 4000) {
+      throw new Error(`${configPath} has an invalid ${name} field`);
+    }
+    return value;
+  };
   const rawColors = raw.colors && typeof raw.colors === "object" && !Array.isArray(raw.colors)
     ? raw.colors : null;
   const colorKeys = [
@@ -527,6 +534,7 @@ async function loadTheme(themeDir) {
   const backgroundRotation = {
     enabled: bool(rawBackgroundRotation.enabled, "backgroundRotation.enabled"),
     intervalMinutes: intervalMinutes(rawBackgroundRotation.intervalMinutes, "backgroundRotation.intervalMinutes"),
+    transitionMs: transitionMs(rawBackgroundRotation.transitionMs, "backgroundRotation.transitionMs"),
     mode: choice(rawBackgroundRotation.mode, "backgroundRotation.mode", ["random", "sequence"]),
     includeDefault: bool(rawBackgroundRotation.includeDefault, "backgroundRotation.includeDefault"),
   };
@@ -1449,7 +1457,9 @@ async function runWatch(options) {
           console.error(`[dream-skin] inject failed for ${target.id}: ${error.message}`);
         }
       }
-      const pollDelay = sessions.size ? 800 : (targets.length ? 250 : 100);
+      // Existing renderer sessions receive reload notifications through CDP.
+      // Poll only to discover a newly-created renderer process.
+      const pollDelay = sessions.size ? 5000 : (targets.length ? 1000 : 500);
       await new Promise((resolve) => setTimeout(resolve, pollDelay));
     }
   } finally {

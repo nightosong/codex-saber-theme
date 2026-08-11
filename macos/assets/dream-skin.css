@@ -204,7 +204,7 @@ html.codex-dream-skin #codex-dream-skin-background-crossfade {
   background-repeat: no-repeat;
   background-attachment: fixed;
   transition: opacity var(--dream-skin-background-crossfade-ms, 1200ms) cubic-bezier(.22, 1, .36, 1);
-  will-change: opacity;
+  will-change: auto;
 }
 
 html.codex-dream-skin:has(main.main-surface.dream-skin-home-shell) #codex-dream-skin-background-crossfade {
@@ -213,6 +213,7 @@ html.codex-dream-skin:has(main.main-surface.dream-skin-home-shell) #codex-dream-
 
 html.codex-dream-skin #codex-dream-skin-background-crossfade.dream-skin-background-crossfade-visible {
   opacity: 1;
+  will-change: opacity;
 }
 
 html.codex-dream-skin aside.app-shell-left-panel {

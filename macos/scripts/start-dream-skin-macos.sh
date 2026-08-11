@@ -22,6 +22,8 @@ while [ "$#" -gt 0 ]; do
     --port) PORT="${2:-}"; PORT_EXPLICIT="true"; shift 2 ;;
     --restart-existing) RESTART_EXISTING="true"; shift ;;
     --prompt-restart) PROMPT_RESTART="true"; shift ;;
+    # Development-only mode: keep a watcher attached to pick up local edits
+    # without rerunning this launcher. Normal use is one-shot.
     --foreground-injector) FOREGROUND_INJECTOR="true"; shift ;;
     *) fail "Unknown start argument: $1" ;;
   esac
@@ -56,19 +58,13 @@ if [ -f "$STATE_PATH" ]; then
   /bin/rm -f "$STATE_PATH"
 fi
 
-INJECTOR_PID=""
 if [ "$DEBUG_READY" = "false" ]; then
   PORT="$(select_available_port "$PORT")"
   printf 'Launching Codex with skin debug port %s…\n' "$PORT" >&2
   launch_codex_with_cdp "$PORT"
-  # Start probing immediately instead of waiting for the native window to finish loading.
-  if [ "$FOREGROUND_INJECTOR" != "true" ]; then
-    INJECTOR_PID="$(launch_injector_daemon "$PORT")"
-  fi
   # Some builds open the window slowly; also try activating the app once.
   /usr/bin/open -na "$CODEX_BUNDLE" --args --remote-debugging-address=127.0.0.1 --remote-debugging-port="$PORT" >/dev/null 2>&1 || true
   if ! wait_for_cdp "$PORT"; then
-    [ -z "$INJECTOR_PID" ] || /bin/kill -TERM "$INJECTOR_PID" 2>/dev/null || true
     fail "Codex did not expose a verified loopback CDP endpoint on port $PORT within 45 seconds. See $APP_LOG and $APP_ERROR_LOG"
   fi
 fi
@@ -77,15 +73,13 @@ if [ "$FOREGROUND_INJECTOR" = "true" ]; then
   exec "$NODE" "$INJECTOR" --watch --port "$PORT" --theme-dir "$THEME_DIR"
 fi
 
-if [ -z "$INJECTOR_PID" ]; then
-  INJECTOR_PID="$(launch_injector_daemon "$PORT")"
+INJECTOR_PID="0"
+INJECTOR_STARTED_AT=""
+if ! "$NODE" "$INJECTOR" --once --port "$PORT" --theme-dir "$THEME_DIR" --timeout-ms 20000 >/dev/null; then
+  fail "The one-shot injector failed. See $INJECTOR_ERROR_LOG"
 fi
-/bin/sleep 0.15
-/bin/kill -0 "$INJECTOR_PID" 2>/dev/null || fail "The injector exited during startup. See $INJECTOR_ERROR_LOG"
-INJECTOR_STARTED_AT="$(process_started_at "$INJECTOR_PID")"
-[ -n "$INJECTOR_STARTED_AT" ] || fail "Could not record the injector process start time."
 CODEX_PID="$(codex_main_pids | /usr/bin/head -n 1)"
-write_state "$PORT" "$INJECTOR_PID" "$INJECTOR_STARTED_AT" "$CODEX_PID"
+write_state "$PORT" "$INJECTOR_PID" "$INJECTOR_STARTED_AT" "${CODEX_PID:-0}"
 
 # Soft verify: keep the injector even if secondary selectors differ by Codex version.
 VERIFY_OUTPUT="$(/usr/bin/mktemp "${TMPDIR:-/tmp}/dream-skin-verify.XXXXXX")"
@@ -107,18 +101,15 @@ if [ "$verify_code" -ne 0 ]; then
   fi
 fi
 if [ "$verify_code" -ne 0 ]; then
-  # If CSS markers are present, treat as soft success (do not kill injector).
+  # If CSS markers are present, treat as soft success.
   if /usr/bin/grep -q '"installed": true' "$VERIFY_OUTPUT" 2>/dev/null; then
     printf 'Codex Saber Theme %s is active (soft verify) on port %s.\n' "$SKIN_VERSION" "$PORT"
     cleanup_verify_output
     trap - EXIT
     exit 0
   fi
-  # The watcher is normally launched directly (launchctl is only a fallback),
-  # so a successful `launchctl remove` does not prove that the recorded PID
-  # stopped.  Verify the PID/path/start-time tuple before deleting state; if
-  # it cannot be stopped safely, preserve the state as evidence and fail
-  # closed instead of leaving an orphan watcher that can reinject later.
+  # A development watcher, when explicitly requested, must be removed through
+  # its recorded identity before the failed session state is discarded.
   if ! stop_recorded_injector; then
     cleanup_verify_output
     trap - EXIT

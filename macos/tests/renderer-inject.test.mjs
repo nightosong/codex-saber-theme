@@ -80,6 +80,21 @@ assert.match(
   /\[class\*="_homeUtilityBar_"\][\s\S]{0,500}dream-skin-home-utility/,
   "The renderer should give the current native home utility bar a stable theme class.",
 );
+assert.doesNotMatch(
+  template,
+  /observer\.observe\(document\.documentElement,\s*\{\s*childList:\s*true,\s*subtree:\s*true/s,
+  "Route synchronization must not observe the entire renderer DOM subtree.",
+);
+assert.doesNotMatch(
+  template,
+  /setInterval\(\(\) => ensure\(\{ root: false, route: true, layout: false \}\)/,
+  "Route synchronization must not rescan the full page on an interval.",
+);
+assert.match(
+  template,
+  /for \(const name of \["pushState", "replaceState"\]\)/,
+  "Route synchronization should be driven by explicit History navigation events.",
+);
 assert.match(
   css,
   /\.dream-skin-home:has\(\.dream-skin-home-utility\)[\s\S]{0,120}\.composer-surface-chrome\s*\{[\s\S]{0,180}border-radius:\s*0 0 22px 22px !important;/,
@@ -324,12 +339,12 @@ assert.equal(
 assert.equal(
   saberPreset.backgroundVariants?.length,
   29,
-  "Saber Ice Atelier should ship twenty-nine daily-life full-body background variants for rotation.",
+  "Saber Ice Atelier should retain the full daily-life background carousel.",
 );
 assert.deepEqual(
   saberPreset.backgroundRotation,
-  { enabled: true, intervalMinutes: 2, mode: "random", includeDefault: true },
-  "Saber Ice Atelier should rotate between the standing default and daily-life variants every two minutes.",
+  { enabled: true, intervalMinutes: 5, transitionMs: 600, mode: "random", includeDefault: true },
+  "Saber Ice Atelier should keep the carousel with a lower-frequency, shorter transition.",
 );
 assert.match(
   css,
@@ -546,7 +561,12 @@ function createFixture(theme, {
     removeEventListener(_name, handler) { this.listeners.delete(handler); },
   };
   const revokedUrls = [];
+  const history = {
+    pushState() {},
+    replaceState() {},
+  };
   const window = {
+    history,
     addEventListener(name, handler) { windowListeners.set(name, handler); },
     removeEventListener(name, handler) {
       if (windowListeners.get(name) === handler) windowListeners.delete(name);
@@ -720,7 +740,7 @@ assert.equal(backgroundRotation.rootStyle.values.get("--dream-skin-art"), 'url("
 assert.equal(backgroundRotation.attributes.get("data-dream-background-rotation"), "sequence");
 assert.equal(backgroundRotation.window.__CODEX_DREAM_SKIN_STATE__.activeBackgroundArtIndex, 0);
 assert.deepEqual(Array.from(backgroundRotation.window.__CODEX_DREAM_SKIN_STATE__.backgroundVariantUrls),
-  ["blob:fixture-2", "blob:fixture-3"]);
+  [], "Rotation variants should remain undecoded until one is selected.");
 backgroundRotation.flushTimers(60 * 1000);
 const backgroundCrossfadeNode = backgroundRotation.nodes.get("codex-dream-skin-background-crossfade");
 assert.ok(backgroundCrossfadeNode, "Background rotation should create a crossfade wallpaper layer.");
@@ -740,9 +760,11 @@ assert.equal(backgroundCrossfadeNode.classList.contains("dream-skin-background-c
 assert.equal(backgroundRotation.attributes.get("data-dream-sidebar-art-crossfade"), "false",
   "The sidebar overlay should settle back after its image becomes the committed wallpaper.");
 assert.equal(backgroundRotation.window.__CODEX_DREAM_SKIN_STATE__.activeBackgroundArtIndex, 1);
+assert.deepEqual(Array.from(backgroundRotation.window.__CODEX_DREAM_SKIN_STATE__.backgroundVariantUrls),
+  ["blob:fixture-2"], "Only the active rotation variant should retain a Blob URL.");
 assert.equal(backgroundRotation.window.__CODEX_DREAM_SKIN_STATE__.cleanup(), true);
 assert.equal(backgroundRotation.nodes.has("codex-dream-skin-background-crossfade"), false);
-assert.deepEqual(backgroundRotation.revokedUrls, ["blob:fixture-1", "blob:fixture-2", "blob:fixture-3"]);
+assert.deepEqual(backgroundRotation.revokedUrls, ["blob:fixture-1", "blob:fixture-2"]);
 const cardArtTheme = {
   id: "card-art-contract",
   appearance: "light",
@@ -839,12 +861,14 @@ const defaultMetrics = defaults.window.__CODEX_DREAM_SKIN_STATE__.metrics;
 assert.equal(defaultMetrics.rootPasses, 1);
 assert.equal(defaultMetrics.routePasses, 1);
 assert.equal(defaultMetrics.layoutReads, 1);
-for (let index = 0; index < 50; index += 1) defaults.observers[0].callback([]);
-assert.equal(defaults.timers.size, 1, "Mutation bursts should coalesce into one scheduled ensure.");
+assert.equal(defaults.observers.length, 1, "Only the bounded appearance observer should remain installed.");
+for (let index = 0; index < 50; index += 1) defaults.window.history.pushState({}, "", `/task/${index}`);
+assert.equal(defaults.timers.size, 1, "Navigation bursts should coalesce into one scheduled ensure.");
+defaults.flushTimers(180);
 defaults.flushTimers(64);
-assert.equal(defaultMetrics.rootPasses, 1, "Subtree mutations must not recompute root theme tokens.");
+assert.equal(defaultMetrics.rootPasses, 1, "Route changes must not recompute root theme tokens.");
 assert.equal(defaultMetrics.routePasses, 2);
-assert.equal(defaultMetrics.layoutReads, 1, "Subtree mutations must not force shell layout reads.");
+assert.equal(defaultMetrics.layoutReads, 1, "Route changes must not force shell layout reads.");
 assert.equal(defaults.resizeObservers.length, 1);
 assert.ok(defaults.resizeObservers[0].target);
 defaults.shellBox.left = 196;
@@ -881,11 +905,11 @@ assert.equal(shellFollow.attributes.get("data-dream-shell"), "light");
 
 defaults.root.className = "";
 defaults.body.setAttribute("data-theme", "dark");
-defaults.observers[1].callback([{ type: "attributes", target: defaults.body }]);
+defaults.observers[0].callback([{ type: "attributes", target: defaults.body }]);
 defaults.flushTimers(64);
 assert.equal(defaults.attributes.get("data-dream-shell"), "dark", "Body theme changes must apply without the fallback interval.");
 const rootPassesAfterThemeChange = defaultMetrics.rootPasses;
-defaults.observers[1].callback([{ type: "attributes", target: defaults.root }]);
+defaults.observers[0].callback([{ type: "attributes", target: defaults.root }]);
 defaults.flushTimers(64);
 assert.equal(defaultMetrics.rootPasses, rootPassesAfterThemeChange, "Repeated native class writes without an appearance change must be ignored.");
 

@@ -83,9 +83,18 @@
     return URL.createObjectURL(new Blob([bytes], { type: mime }));
   };
   const artUrl = objectUrlForDataUrl(artDataUrl);
-  const backgroundVariantUrls = (Array.isArray(backgroundVariantDataUrls) ? backgroundVariantDataUrls : [])
-    .map(objectUrlForDataUrl)
-    .filter(Boolean);
+  const backgroundVariantDataUrlList = Array.isArray(backgroundVariantDataUrls)
+    ? backgroundVariantDataUrls.filter((dataUrl) => typeof dataUrl === "string") : [];
+  // A full-size wallpaper can occupy tens of megabytes once decoded. Keep the
+  // rotation sources as strings, then retain Blob URLs for only the current
+  // and incoming wallpaper while a crossfade is in progress.
+  const backgroundVariantUrls = [];
+  const backgroundVariantUrlFor = (index) => {
+    if (backgroundVariantUrls[index]) return backgroundVariantUrls[index];
+    const url = objectUrlForDataUrl(backgroundVariantDataUrlList[index]);
+    if (url) backgroundVariantUrls[index] = url;
+    return url;
+  };
   const homeArtUrl = objectUrlForDataUrl(homeArtDataUrl) || artUrl;
   const cardArtUrls = (Array.isArray(cardArtDataUrls) ? cardArtDataUrls : [])
     .slice(0, 4)
@@ -101,6 +110,7 @@
   if (previous?.rootObserver) previous.rootObserver.disconnect();
   if (previous?.resizeObserver) previous.resizeObserver.disconnect();
   if (previous?.timer) clearInterval(previous.timer);
+  if (previous?.routeNavigationTimer) clearTimeout(previous.routeNavigationTimer);
   if (previous?.backgroundRotationTimer) clearTimeout(previous.backgroundRotationTimer);
   if (previous?.backgroundCrossfadeTimer) clearTimeout(previous.backgroundCrossfadeTimer);
   if (previous?.scheduler?.timeout) clearTimeout(previous.scheduler.timeout);
@@ -117,6 +127,17 @@
     try { previous.motionQuery.removeEventListener("change", previous.motionHandler); } catch {}
   }
   if (previous?.visibilityHandler) document.removeEventListener("visibilitychange", previous.visibilityHandler);
+  if (previous?.routeNavigationHandler) {
+    window.removeEventListener("popstate", previous.routeNavigationHandler);
+    window.removeEventListener("hashchange", previous.routeNavigationHandler);
+  }
+  if (previous?.sidebarNavigationHandler) {
+    document.removeEventListener("pointerdown", previous.sidebarNavigationHandler, true);
+    document.removeEventListener("click", previous.sidebarNavigationHandler, true);
+  }
+  for (const hook of previous?.historyHooks ?? []) {
+    if (window.history?.[hook.name] === hook.wrapped) window.history[hook.name] = hook.original;
+  }
 
   const cssString = (value) => JSON.stringify(String(value ?? ""));
 
@@ -149,30 +170,42 @@
   const backgroundRotationTransitionMs = Number.isFinite(rawBackgroundRotation.transitionMs)
     ? Math.min(4000, Math.max(0, rawBackgroundRotation.transitionMs)) : 1200;
   const backgroundRotation = {
-    enabled: rawBackgroundRotation.enabled === true && backgroundVariantUrls.length > 0,
+    enabled: rawBackgroundRotation.enabled === true && backgroundVariantDataUrlList.length > 0,
     intervalMs: backgroundRotationIntervalMinutes * 60 * 1000,
     intervalMinutes: backgroundRotationIntervalMinutes,
     mode: rawBackgroundRotation.mode === "sequence" ? "sequence" : "random",
     includeDefault: rawBackgroundRotation.includeDefault !== false,
     transitionMs: backgroundRotationTransitionMs,
   };
-  const backgroundArtUrls = [
-    ...(backgroundRotation.includeDefault && artUrl ? [artUrl] : []),
-    ...backgroundVariantUrls,
+  const backgroundArtSources = [
+    ...(backgroundRotation.includeDefault && artUrl ? [{ url: artUrl }] : []),
+    ...backgroundVariantDataUrlList.map((_, index) => ({ variantIndex: index })),
   ];
-  if (!backgroundArtUrls.length && artUrl) backgroundArtUrls.push(artUrl);
+  if (!backgroundArtSources.length && artUrl) backgroundArtSources.push({ url: artUrl });
+  const backgroundArtUrlFor = (index) => {
+    const source = backgroundArtSources[index];
+    if (!source) return artUrl;
+    return source.url || backgroundVariantUrlFor(source.variantIndex) || artUrl;
+  };
+  const releaseInactiveBackgroundVariants = (retainedUrls) => {
+    backgroundVariantUrls.forEach((url, index) => {
+      if (!url || retainedUrls.has(url)) return;
+      URL.revokeObjectURL(url);
+      backgroundVariantUrls[index] = null;
+    });
+  };
   let activeBackgroundArtIndex = 0;
   let activeArtUrl = backgroundRotation.enabled
-    ? backgroundArtUrls[activeBackgroundArtIndex] || artUrl
+    ? backgroundArtUrlFor(activeBackgroundArtIndex)
     : artUrl;
   let backgroundRotationTimer = null;
   let backgroundCrossfadeTimer = null;
   const selectNextBackgroundArtIndex = () => {
-    if (!backgroundRotation.enabled || backgroundArtUrls.length <= 1) return activeBackgroundArtIndex;
+    if (!backgroundRotation.enabled || backgroundArtSources.length <= 1) return activeBackgroundArtIndex;
     if (backgroundRotation.mode === "sequence") {
-      return (activeBackgroundArtIndex + 1) % backgroundArtUrls.length;
+      return (activeBackgroundArtIndex + 1) % backgroundArtSources.length;
     }
-    const optionCount = backgroundArtUrls.length - 1;
+    const optionCount = backgroundArtSources.length - 1;
     const rolled = Math.min(optionCount - 1, Math.floor(Math.random() * optionCount));
     return rolled >= activeBackgroundArtIndex ? rolled + 1 : rolled;
   };
@@ -213,6 +246,7 @@
     setAttribute(root, SIDEBAR_ART_CROSSFADE_ATTR, "false");
     setAttribute(root, "data-dream-background-rotation", backgroundRotation.enabled ? backgroundRotation.mode : "off");
     setAttribute(root, "data-dream-background-index", backgroundRotation.enabled ? activeBackgroundArtIndex : 0);
+    releaseInactiveBackgroundVariants(new Set([activeArtUrl]));
     const state = window[STATE_KEY];
     if (state?.installToken === installToken) {
       state.activeBackgroundArtIndex = backgroundRotation.enabled ? activeBackgroundArtIndex : 0;
@@ -221,11 +255,11 @@
   };
   const applyBackgroundArt = (root, { advance = false } = {}) => {
     const previousArtUrl = activeArtUrl;
-    if (backgroundRotation.enabled && backgroundArtUrls.length > 1 && advance) {
+    if (backgroundRotation.enabled && backgroundArtSources.length > 1 && advance) {
       activeBackgroundArtIndex = selectNextBackgroundArtIndex();
     }
     const nextArtUrl = backgroundRotation.enabled
-      ? backgroundArtUrls[activeBackgroundArtIndex] || artUrl
+      ? backgroundArtUrlFor(activeBackgroundArtIndex)
       : artUrl;
     const shouldCrossfade = Boolean(
       advance
@@ -272,7 +306,7 @@
   };
   const scheduleBackgroundRotation = () => {
     if (backgroundRotationTimer) clearTimeout(backgroundRotationTimer);
-    if (!backgroundRotation.enabled || backgroundArtUrls.length <= 1) {
+    if (!backgroundRotation.enabled || backgroundArtSources.length <= 1) {
       const state = window[STATE_KEY];
       if (state?.installToken === installToken) state.backgroundRotationTimer = null;
       return;
@@ -1058,6 +1092,7 @@
     state?.rootObserver?.disconnect();
     state?.resizeObserver?.disconnect();
     if (state?.timer) clearInterval(state.timer);
+    if (state?.routeNavigationTimer) clearTimeout(state.routeNavigationTimer);
     if (state?.backgroundRotationTimer) clearTimeout(state.backgroundRotationTimer);
     if (state?.backgroundCrossfadeTimer) clearTimeout(state.backgroundCrossfadeTimer);
     if (state?.scheduler?.timeout) clearTimeout(state.scheduler.timeout);
@@ -1074,14 +1109,23 @@
       try { state.motionQuery.removeEventListener("change", state.motionHandler); } catch {}
     }
     if (state?.visibilityHandler) document.removeEventListener("visibilitychange", state.visibilityHandler);
+    if (state?.routeNavigationHandler) {
+      window.removeEventListener("popstate", state.routeNavigationHandler);
+      window.removeEventListener("hashchange", state.routeNavigationHandler);
+    }
     if (state?.sidebarNavigationHandler) {
       document.removeEventListener("pointerdown", state.sidebarNavigationHandler, true);
       document.removeEventListener("click", state.sidebarNavigationHandler, true);
     }
+    for (const hook of state?.historyHooks ?? []) {
+      if (window.history?.[hook.name] === hook.wrapped) window.history[hook.name] = hook.original;
+    }
     if (state?.artUrl) URL.revokeObjectURL(state.artUrl);
     if (state?.homeArtUrl && state.homeArtUrl !== state.artUrl) URL.revokeObjectURL(state.homeArtUrl);
     for (const url of state?.cardArtUrls ?? []) URL.revokeObjectURL(url);
-    for (const url of state?.backgroundVariantUrls ?? []) URL.revokeObjectURL(url);
+    for (const url of state?.backgroundVariantUrls ?? []) {
+      if (url) URL.revokeObjectURL(url);
+    }
     if (state?.sidebarEmblemUrl) URL.revokeObjectURL(state.sidebarEmblemUrl);
     if (state?.environmentCardArtUrl) URL.revokeObjectURL(state.environmentCardArtUrl);
     if (state?.filePanelArtUrl) URL.revokeObjectURL(state.filePanelArtUrl);
@@ -1092,6 +1136,18 @@
   };
 
   const scheduler = { timeout: null, frame: null, root: false, route: false, layout: false };
+  let routeNavigationTimer = null;
+  const scheduleRouteSync = ({ layout = false } = {}) => {
+    if (routeNavigationTimer) return;
+    routeNavigationTimer = setTimeout(() => {
+      routeNavigationTimer = null;
+      const state = window[STATE_KEY];
+      if (state?.installToken === installToken) state.routeNavigationTimer = null;
+      scheduleEnsure({ route: true, layout });
+    }, 180);
+    const state = window[STATE_KEY];
+    if (state?.installToken === installToken) state.routeNavigationTimer = routeNavigationTimer;
+  };
   const hidePanelArtForSidebarNavigation = () => {
     document.getElementById(FILE_PANEL_ART_ID)?.remove();
     document.getElementById(REVIEW_PANEL_ART_ID)?.remove();
@@ -1114,8 +1170,27 @@
     const isLink = control.matches?.('a[href], [role="link"]');
     const isRouteOrSidebarToggle = /^(?:新建任务|拉取请求|已安排|插件|折叠显示|展开显示|new task|pull requests?|scheduled|plugins?|collapse|expand)$/i
       .test(label);
-    if (isLink || isRouteOrSidebarToggle) hidePanelArtForSidebarNavigation();
+    if (isLink || isRouteOrSidebarToggle) {
+      hidePanelArtForSidebarNavigation();
+      scheduleRouteSync();
+    }
   };
+  const routeNavigationHandler = () => scheduleRouteSync();
+  const historyHooks = [];
+  for (const name of ["pushState", "replaceState"]) {
+    const browserHistory = window.history;
+    const original = browserHistory?.[name];
+    if (typeof original !== "function") continue;
+    const wrapped = function (...args) {
+      const result = original.apply(this, args);
+      scheduleRouteSync();
+      return result;
+    };
+    try {
+      browserHistory[name] = wrapped;
+      historyHooks.push({ name, original, wrapped });
+    } catch {}
+  }
   const flushScheduledEnsure = () => {
     if (scheduler.frame !== null && typeof cancelAnimationFrame === "function") {
       cancelAnimationFrame(scheduler.frame);
@@ -1141,7 +1216,6 @@
       scheduler.timeout = setTimeout(flushScheduledEnsure, 64);
     }
   };
-  const observer = new MutationObserver(() => scheduleEnsure({ route: true }));
   const appearanceSignatureFor = () => {
     const signatureFor = (node) => {
       const classes = String(node?.className || "").split(/\s+/)
@@ -1208,7 +1282,7 @@
   window[STATE_KEY] = {
     ensure,
     cleanup,
-    observer,
+    observer: null,
     rootObserver,
     resizeObserver,
     timer: null,
@@ -1221,7 +1295,10 @@
     motionQuery,
     motionHandler,
     visibilityHandler,
+    routeNavigationHandler,
     sidebarNavigationHandler,
+    historyHooks,
+    routeNavigationTimer,
     resizeTimer,
     resizing,
     artUrl,
@@ -1252,7 +1329,9 @@
     URL.revokeObjectURL(previous.homeArtUrl);
   }
   for (const url of previous?.cardArtUrls ?? []) URL.revokeObjectURL(url);
-  for (const url of previous?.backgroundVariantUrls ?? []) URL.revokeObjectURL(url);
+  for (const url of previous?.backgroundVariantUrls ?? []) {
+    if (url) URL.revokeObjectURL(url);
+  }
   if (previous?.sidebarEmblemUrl && previous.sidebarEmblemUrl !== sidebarEmblemUrl) {
     URL.revokeObjectURL(previous.sidebarEmblemUrl);
   }
@@ -1269,10 +1348,6 @@
     URL.revokeObjectURL(previous.animatedOverlayUrl);
   }
 
-  observer.observe(document.documentElement, {
-    childList: true,
-    subtree: true,
-  });
   rootObserver.observe(document.documentElement, {
     attributes: true,
     attributeFilter: ["class", "data-theme", "data-appearance", "data-color-mode"],
@@ -1283,8 +1358,6 @@
       attributeFilter: ["class", "data-theme", "data-appearance", "data-color-mode"],
     });
   }
-  const timer = setInterval(() => ensure({ root: false, route: true, layout: false }), 4000);
-  window[STATE_KEY].timer = timer;
   scheduleBackgroundRotation();
   window.addEventListener("resize", resizeHandler, { passive: true });
   if (mediaHandler && mediaQuery) {
@@ -1294,6 +1367,8 @@
     motionQuery.addEventListener("change", motionHandler);
   }
   document.addEventListener("visibilitychange", visibilityHandler);
+  window.addEventListener("popstate", routeNavigationHandler);
+  window.addEventListener("hashchange", routeNavigationHandler);
   document.addEventListener("pointerdown", sidebarNavigationHandler, true);
   document.addEventListener("click", sidebarNavigationHandler, true);
   const analysisPromise = artAnalysis ? Promise.resolve(null) : analyzeArt();

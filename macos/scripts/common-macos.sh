@@ -585,43 +585,32 @@ ensure_node_runtime() {
   require_macos_runtime
 }
 
-# Fast path when CDP is already open: restart injector + one-shot inject.
+# Fast path when CDP is already open: a one-shot injector avoids leaving a
+# Node/CDP watcher resident after the active renderer has been configured.
 # Returns 0 on success, 1 if CDP is not ready (caller should full-start).
 hot_reapply_theme() {
   local port="${1:-9341}"
   local timeout_ms="${2:-8000}"
-  local inj_pid=""
-  local injector_protocol=""
-  local started_at=""
-  local codex_pid=""
 
   # A generic HTTP listener is not enough for a hot re-apply: only use the
   # endpoint already verified as belonging to the official Codex process.
   verified_cdp_endpoint "$port" || return 1
   ensure_node_runtime || return 1
 
-  injector_protocol="$(state_field injectorProtocol 2>/dev/null || true)"
-  if [ "$injector_protocol" = "2" ]; then
-    inj_pid="$(/bin/ps -axo pid=,command= | /usr/bin/awk -v inj="$INJECTOR" -v port="$port" '
-      index($0, inj) && index($0, "--watch") && index($0, "--port " port " --theme-dir ") { print $1; exit }
-    ')"
+  # Migrate a legacy watcher away before injecting the new payload. Its CDP
+  # session would otherwise remain resident and keep the previous runtime
+  # behavior alive alongside the one-shot injection.
+  if [ -f "$STATE_PATH" ]; then
+    stop_recorded_injector || return 1
   fi
+
   if ! "$NODE" "$INJECTOR" --once --port "$port" --theme-dir "$THEME_DIR" \
     --timeout-ms "$timeout_ms" >/dev/null 2>&1; then
     return 1
   fi
-
-  # A current watcher reloads theme files itself. Start one only when absent.
-  if [ -n "$inj_pid" ] && /bin/kill -0 "$inj_pid" 2>/dev/null; then
-    return 0
-  fi
-  stop_recorded_injector 2>/dev/null || return 1
-  inj_pid="$(launch_injector_daemon "$port")"
-  /bin/kill -0 "$inj_pid" 2>/dev/null || return 1
-  started_at="$(process_started_at "$inj_pid")"
+  local codex_pid=""
   codex_pid="$(codex_main_pids 2>/dev/null | /usr/bin/head -n 1)"
-  [ -n "$started_at" ] || started_at="$(/bin/date)"
-  write_state "$port" "$inj_pid" "$started_at" "${codex_pid:-0}"
+  write_state "$port" "0" "" "${codex_pid:-0}"
   return 0
 }
 
