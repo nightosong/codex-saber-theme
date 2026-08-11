@@ -48,6 +48,12 @@
     "mode": "random",
     "includeDefault": true
   },
+  "cardArt": [
+    "card-archer.webp",
+    "card-lancer.webp",
+    "card-berserker.webp",
+    "card-rider.webp"
+  ],
   "appearance": "light",
   "art": {
     "safeArea": "left",

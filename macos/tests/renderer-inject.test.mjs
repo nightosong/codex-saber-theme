@@ -336,6 +336,11 @@ assert.equal(
   undefined,
   "Saber Ice Atelier should use its chat background artwork instead of a separate FSN sidebar emblem.",
 );
+assert.deepEqual(
+  saberPreset.cardArt,
+  ["card-archer.webp", "card-lancer.webp", "card-berserker.webp", "card-rider.webp"],
+  "Saber Ice Atelier should keep the four matching class illustrations on its home cards.",
+);
 assert.equal(
   saberPreset.backgroundVariants?.length,
   29,
@@ -853,6 +858,28 @@ newChatNavigation.documentListeners.get("click")({ target: newChatTarget });
 assert.equal(newChatNavigation.timers.size, 2,
   "The current New chat sidebar button must schedule fast and settled route syncs.");
 assert.equal(newChatNavigation.window.__CODEX_DREAM_SKIN_STATE__.cleanup(), true);
+const threadNavigation = createFixture(cardArtTheme, { homeMounted: true });
+vm.runInNewContext(threadNavigation.payload, threadNavigation.context);
+assert.equal(threadNavigation.nodes.get("codex-dream-skin-chrome").classList.contains("dream-skin-home-shell"), true);
+threadNavigation.setHomeMounted(false);
+const threadControl = {
+  textContent: "feat: inspect route",
+  getAttribute(name) { return name === "aria-label" ? "feat: inspect route" : null; },
+  hasAttribute(name) { return name === "data-app-action-sidebar-thread-row"; },
+  matches() { return false; },
+};
+const threadTarget = {
+  closest(selector) {
+    if (selector.includes("data-app-shell-sidebar-trigger")) return null;
+    return selector.includes("data-app-action-sidebar-thread-row") ? threadControl : null;
+  },
+};
+threadNavigation.documentListeners.get("pointerdown")({ target: threadTarget });
+threadNavigation.flushTimers(180);
+threadNavigation.flushTimers(64);
+assert.equal(threadNavigation.nodes.get("codex-dream-skin-chrome").classList.contains("dream-skin-home-shell"), false,
+  "Selecting a sidebar thread must clear home styling so the chat carousel becomes visible.");
+assert.equal(threadNavigation.window.__CODEX_DREAM_SKIN_STATE__.cleanup(), true);
 const animatedOverlay = createFixture(cardArtTheme);
 vm.runInNewContext(animatedOverlay.payloadFor(
   cardArtTheme,

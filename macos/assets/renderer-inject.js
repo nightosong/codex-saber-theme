@@ -1177,16 +1177,18 @@
       return;
     }
     const control = target.closest(
-      'aside.app-shell-left-panel a[href], aside.app-shell-left-panel [role="link"], aside.app-shell-left-panel button',
+      'aside.app-shell-left-panel a[href], aside.app-shell-left-panel [role="link"], ' +
+      'aside.app-shell-left-panel button, aside.app-shell-left-panel [data-app-action-sidebar-thread-row]',
     );
     if (!control) return;
     const label = `${control.getAttribute?.("aria-label") ?? ""} ${control.textContent ?? ""}`
       .replace(/\s+/g, " ")
       .trim();
     const isLink = control.matches?.('a[href], [role="link"]');
+    const isThread = control.hasAttribute?.("data-app-action-sidebar-thread-row");
     const isRouteOrSidebarToggle = /^(?:新建任务|新对话|拉取请求|已安排|插件|折叠显示|展开显示|new task|new chat|pull requests?|scheduled|plugins?|collapse|expand)$/i
       .test(label) || /(?:开始新聊天|start(?: a)? new chat)/i.test(label);
-    if (isLink || isRouteOrSidebarToggle) {
+    if (isLink || isThread || isRouteOrSidebarToggle) {
       hidePanelArtForSidebarNavigation();
       scheduleRouteSync();
     }
