@@ -67,11 +67,14 @@
     analysisCacheHits: artAnalysis ? 1 : 0,
     firstEnsureMs: null,
     analysisMs: null,
+    rotations: 0,
+    imageLoadErrors: 0,
   };
   window[DISABLED_KEY] = false;
 
   const previous = window[STATE_KEY];
-  const objectUrlForDataUrl = (dataUrl) => {
+  const blobForDataUrl = (dataUrl) => {
+    if (dataUrl instanceof Blob) return dataUrl;
     if (typeof dataUrl !== "string") return null;
     const comma = dataUrl.indexOf(",");
     if (comma < 1) return null;
@@ -80,18 +83,23 @@
     const binary = atob(dataUrl.slice(comma + 1));
     const bytes = new Uint8Array(binary.length);
     for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
-    return URL.createObjectURL(new Blob([bytes], { type: mime }));
+    return new Blob([bytes], { type: mime });
+  };
+  const objectUrlForDataUrl = (dataUrl) => {
+    const blob = blobForDataUrl(dataUrl);
+    return blob ? URL.createObjectURL(blob) : null;
   };
   const artUrl = objectUrlForDataUrl(artDataUrl);
-  const backgroundVariantDataUrlList = Array.isArray(backgroundVariantDataUrls)
-    ? backgroundVariantDataUrls.filter((dataUrl) => typeof dataUrl === "string") : [];
-  // A full-size wallpaper can occupy tens of megabytes once decoded. Keep the
-  // rotation sources as strings, then retain Blob URLs for only the current
-  // and incoming wallpaper while a crossfade is in progress.
+  // Keep compressed binary Blobs, not the larger Base64 strings, in the live
+  // closure. Only current/incoming variants get URLs and decoded image data.
+  const backgroundVariantBlobs = Array.isArray(backgroundVariantDataUrls)
+    ? backgroundVariantDataUrls.map(blobForDataUrl).filter(Boolean) : [];
+  backgroundVariantDataUrls = null;
   const backgroundVariantUrls = [];
   const backgroundVariantUrlFor = (index) => {
     if (backgroundVariantUrls[index]) return backgroundVariantUrls[index];
-    const url = objectUrlForDataUrl(backgroundVariantDataUrlList[index]);
+    const blob = backgroundVariantBlobs[index];
+    const url = blob ? URL.createObjectURL(blob) : null;
     if (url) backgroundVariantUrls[index] = url;
     return url;
   };
@@ -105,6 +113,9 @@
   const filePanelArtUrl = objectUrlForDataUrl(filePanelArtDataUrl);
   const reviewPanelArtUrl = objectUrlForDataUrl(reviewPanelArtDataUrl);
   const animatedOverlayUrl = objectUrlForDataUrl(animatedOverlayDataUrl);
+
+  if (previous?.cancelPendingImages) previous.cancelPendingImages();
+  if (previous?.releaseBinaryResources) previous.releaseBinaryResources();
 
   if (previous?.observer) previous.observer.disconnect();
   if (previous?.rootObserver) previous.rootObserver.disconnect();
@@ -137,6 +148,7 @@
     document.removeEventListener("click", previous.sidebarNavigationHandler, true);
   }
   for (const hook of previous?.historyHooks ?? []) {
+    hook.notify = null;
     if (window.history?.[hook.name] === hook.wrapped) window.history[hook.name] = hook.original;
   }
 
@@ -171,7 +183,7 @@
   const backgroundRotationTransitionMs = Number.isFinite(rawBackgroundRotation.transitionMs)
     ? Math.min(4000, Math.max(0, rawBackgroundRotation.transitionMs)) : 1200;
   const backgroundRotation = {
-    enabled: rawBackgroundRotation.enabled === true && backgroundVariantDataUrlList.length > 0,
+    enabled: rawBackgroundRotation.enabled === true && backgroundVariantBlobs.length > 0,
     intervalMs: backgroundRotationIntervalMinutes * 60 * 1000,
     intervalMinutes: backgroundRotationIntervalMinutes,
     mode: rawBackgroundRotation.mode === "sequence" ? "sequence" : "random",
@@ -180,7 +192,7 @@
   };
   const backgroundArtSources = [
     ...(backgroundRotation.includeDefault && artUrl ? [{ url: artUrl }] : []),
-    ...backgroundVariantDataUrlList.map((_, index) => ({ variantIndex: index })),
+    ...backgroundVariantBlobs.map((_, index) => ({ variantIndex: index })),
   ];
   if (!backgroundArtSources.length && artUrl) backgroundArtSources.push({ url: artUrl });
   const backgroundArtUrlFor = (index) => {
@@ -201,6 +213,61 @@
     : artUrl;
   let backgroundRotationTimer = null;
   let backgroundCrossfadeTimer = null;
+  let backgroundPreloadCancel = null;
+  let backgroundGeneration = 0;
+  const pendingImages = new Set();
+  const cancelPendingImages = () => {
+    for (const cancel of [...pendingImages]) cancel();
+  };
+  const loadImage = (url, done) => {
+    if (typeof window.Image !== "function") { done(true, null); return null; }
+    const image = new window.Image();
+    let finished = false;
+    let timeout = null;
+    const finish = (success) => {
+      if (finished) return;
+      finished = true;
+      if (timeout) clearTimeout(timeout);
+      pendingImages.delete(cancel);
+      image.onload = null;
+      image.onerror = null;
+      try { done(success, image); } finally { image.src = ""; }
+    };
+    const cancel = () => finish(false);
+    pendingImages.add(cancel);
+    image.onload = () => finish(true);
+    image.onerror = () => { metrics.imageLoadErrors += 1; finish(false); };
+    timeout = setTimeout(() => { metrics.imageLoadErrors += 1; finish(false); }, 10000);
+    image.src = url;
+    return finished ? null : cancel;
+  };
+  const clearCrossfade = () => {
+    const crossfade = document.getElementById(BACKGROUND_CROSSFADE_ID);
+    crossfade?.classList.remove(BACKGROUND_CROSSFADE_VISIBLE_CLASS);
+    crossfade?.style.removeProperty("background-image");
+    const root = document.documentElement;
+    if (root) {
+      setStyleProperty(root, "--dream-skin-sidebar-next-art", "none");
+      setAttribute(root, SIDEBAR_ART_CROSSFADE_ATTR, "false");
+    }
+  };
+  const pauseBackgroundRotation = () => {
+    backgroundGeneration += 1;
+    if (backgroundRotationTimer) clearTimeout(backgroundRotationTimer);
+    if (backgroundCrossfadeTimer) clearTimeout(backgroundCrossfadeTimer);
+    backgroundRotationTimer = null;
+    backgroundCrossfadeTimer = null;
+    backgroundPreloadCancel?.();
+    backgroundPreloadCancel = null;
+    clearCrossfade();
+    releaseInactiveBackgroundVariants(new Set([activeArtUrl]));
+    const state = window[STATE_KEY];
+    if (state?.installToken === installToken) {
+      activeBackgroundArtIndex = state.activeBackgroundArtIndex;
+      state.backgroundRotationTimer = null;
+      state.backgroundCrossfadeTimer = null;
+    }
+  };
   const selectNextBackgroundArtIndex = () => {
     if (!backgroundRotation.enabled || backgroundArtSources.length <= 1) return activeBackgroundArtIndex;
     if (backgroundRotation.mode === "sequence") {
@@ -222,22 +289,6 @@
     }
     return crossfade;
   };
-  const preloadBackgroundArt = (url, done) => {
-    if (typeof window.Image !== "function") {
-      done();
-      return;
-    }
-    let finished = false;
-    const finish = () => {
-      if (finished) return;
-      finished = true;
-      done();
-    };
-    const image = new window.Image();
-    image.onload = finish;
-    image.onerror = finish;
-    image.src = url;
-  };
   const commitBackgroundArt = (root, nextArtUrl = activeArtUrl, { preserveSidebarCrossfade = false } = {}) => {
     activeArtUrl = nextArtUrl;
     if (activeArtUrl) setStyleProperty(root, "--dream-skin-art", `url("${activeArtUrl}")`);
@@ -255,7 +306,10 @@
     }
   };
   const applyBackgroundArt = (root, { advance = false } = {}) => {
+    if (advance && (document.hidden || backgroundPreloadCancel || backgroundCrossfadeTimer)) return;
     const previousArtUrl = activeArtUrl;
+    const previousIndex = activeBackgroundArtIndex;
+    const generation = ++backgroundGeneration;
     if (backgroundRotation.enabled && backgroundArtSources.length > 1 && advance) {
       activeBackgroundArtIndex = selectNextBackgroundArtIndex();
     }
@@ -271,8 +325,9 @@
       && !motionQuery?.matches,
     );
     if (!shouldCrossfade) {
-      document.getElementById(BACKGROUND_CROSSFADE_ID)?.classList.remove(BACKGROUND_CROSSFADE_VISIBLE_CLASS);
+      clearCrossfade();
       commitBackgroundArt(root, nextArtUrl);
+      if (advance) metrics.rotations += 1;
       return;
     }
     const crossfade = ensureBackgroundCrossfade();
@@ -287,9 +342,16 @@
     crossfade.classList.remove(BACKGROUND_CROSSFADE_VISIBLE_CLASS);
     crossfade.style.setProperty("--dream-skin-background-crossfade-ms", `${backgroundRotationTransitionMs}ms`);
     crossfade.style.setProperty("background-image", `url("${nextArtUrl}")`);
-    preloadBackgroundArt(nextArtUrl, () => {
+    backgroundPreloadCancel = loadImage(nextArtUrl, (success) => {
+      backgroundPreloadCancel = null;
       const state = window[STATE_KEY];
-      if (state?.installToken !== installToken || window[DISABLED_KEY]) return;
+      if (state?.installToken !== installToken || window[DISABLED_KEY] || generation !== backgroundGeneration) return;
+      if (!success || document.hidden) {
+        activeBackgroundArtIndex = previousIndex;
+        clearCrossfade();
+        releaseInactiveBackgroundVariants(new Set([activeArtUrl]));
+        return;
+      }
       crossfade.classList.remove(BACKGROUND_CROSSFADE_VISIBLE_CLASS);
       void crossfade.offsetWidth;
       crossfade.classList.add(BACKGROUND_CROSSFADE_VISIBLE_CLASS);
@@ -298,7 +360,8 @@
       backgroundCrossfadeTimer = setTimeout(() => {
         backgroundCrossfadeTimer = null;
         commitBackgroundArt(root, nextArtUrl, { preserveSidebarCrossfade: true });
-        crossfade.classList.remove(BACKGROUND_CROSSFADE_VISIBLE_CLASS);
+        clearCrossfade();
+        metrics.rotations += 1;
         const currentState = window[STATE_KEY];
         if (currentState?.installToken === installToken) currentState.backgroundCrossfadeTimer = null;
       }, backgroundRotationTransitionMs + 80);
@@ -307,14 +370,15 @@
   };
   const scheduleBackgroundRotation = () => {
     if (backgroundRotationTimer) clearTimeout(backgroundRotationTimer);
-    if (!backgroundRotation.enabled || backgroundArtSources.length <= 1) {
+    backgroundRotationTimer = null;
+    if (!backgroundRotation.enabled || backgroundArtSources.length <= 1 || document.hidden || window[DISABLED_KEY]) {
       const state = window[STATE_KEY];
       if (state?.installToken === installToken) state.backgroundRotationTimer = null;
       return;
     }
     backgroundRotationTimer = setTimeout(() => {
       backgroundRotationTimer = null;
-      if (!window[DISABLED_KEY]) {
+      if (window[STATE_KEY]?.installToken === installToken && !window[DISABLED_KEY] && !document.hidden) {
         const root = document.documentElement;
         if (root) applyBackgroundArt(root, { advance: true });
         scheduleBackgroundRotation();
@@ -614,7 +678,6 @@
       resolve(null);
       return;
     }
-    const image = new window.Image();
     let settled = false;
     const finish = (value) => {
       if (settled) return;
@@ -624,9 +687,8 @@
       metrics.analysisMs = Number((now() - startedAt).toFixed(3));
       resolve(value);
     };
-    analysisTimer = setTimeout(() => finish(null), 6000);
-    image.onerror = () => finish(null);
-    image.onload = () => {
+    loadImage(artUrl, (success, image) => {
+      if (!success || !image) { finish(null); return; }
       try {
         const ratio = image.naturalWidth / image.naturalHeight;
         if (!Number.isFinite(ratio) || ratio <= 0) throw new Error("Invalid image dimensions");
@@ -747,8 +809,7 @@
       } catch {
         finish(null);
       }
-    };
-    image.src = artUrl;
+    });
   });
 
   let chromeParts = null;
@@ -1050,6 +1111,7 @@
   };
 
   const ensure = ({ root: rootPass = true, route = true, layout = true } = {}) => {
+    if (window[STATE_KEY]?.installToken !== installToken || window[DISABLED_KEY]) return;
     if (window[DISABLED_KEY]) return;
     const root = document.documentElement;
     if (!root) return;
@@ -1062,6 +1124,9 @@
     const state = window[STATE_KEY];
     if (state?.installToken !== installToken) return false;
     window[DISABLED_KEY] = true;
+    pauseBackgroundRotation();
+    cancelPendingImages();
+    backgroundVariantBlobs.length = 0;
     document.documentElement?.classList.remove("codex-dream-skin");
     document.documentElement?.removeAttribute(SHELL_ATTR);
     for (const name of ART_ATTRS) document.documentElement?.removeAttribute(name);
@@ -1120,6 +1185,7 @@
       document.removeEventListener("click", state.sidebarNavigationHandler, true);
     }
     for (const hook of state?.historyHooks ?? []) {
+      hook.notify = null;
       if (window.history?.[hook.name] === hook.wrapped) window.history[hook.name] = hook.original;
     }
     if (state?.artUrl) URL.revokeObjectURL(state.artUrl);
@@ -1199,14 +1265,24 @@
     const browserHistory = window.history;
     const original = browserHistory?.[name];
     if (typeof original !== "function") continue;
+    // Reuse a dispatcher if another library wrapped it. Re-wrapping that
+    // library would otherwise retain a chain of obsolete theme instances.
+    const existingHook = previous?.historyHooks?.find((hook) => hook.name === name && hook.dispatcher);
+    if (existingHook && original !== existingHook.original) {
+      existingHook.notify = scheduleRouteSync;
+      historyHooks.push(existingHook);
+      continue;
+    }
+    const hook = { name, original, wrapped: null, notify: scheduleRouteSync, dispatcher: true };
     const wrapped = function (...args) {
-      const result = original.apply(this, args);
-      scheduleRouteSync();
+      const result = hook.original.apply(this, args);
+      hook.notify?.();
       return result;
     };
+    hook.wrapped = wrapped;
     try {
       browserHistory[name] = wrapped;
-      historyHooks.push({ name, original, wrapped });
+      historyHooks.push(hook);
     } catch {}
   }
   const flushScheduledEnsure = () => {
@@ -1284,7 +1360,11 @@
   let mediaQuery = null;
   let mediaHandler = null;
   let motionHandler = null;
-  const visibilityHandler = () => scheduleEnsure({ route: true });
+  const visibilityHandler = () => {
+    if (document.hidden) pauseBackgroundRotation();
+    else scheduleBackgroundRotation();
+    scheduleEnsure({ route: true });
+  };
   try {
     mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
     mediaHandler = () => {
@@ -1300,6 +1380,16 @@
   window[STATE_KEY] = {
     ensure,
     cleanup,
+    cancelPendingImages,
+    releaseBinaryResources: () => { backgroundVariantBlobs.length = 0; },
+    resources: () => ({
+      variantBlobs: backgroundVariantBlobs.length,
+      variantBytes: backgroundVariantBlobs.reduce((sum, blob) => sum + blob.size, 0),
+      activeVariantUrls: backgroundVariantUrls.filter(Boolean).length,
+      pendingImages: pendingImages.size,
+      rotationScheduled: Boolean(backgroundRotationTimer),
+      crossfadeScheduled: Boolean(backgroundCrossfadeTimer),
+    }),
     observer: null,
     rootObserver,
     resizeObserver,

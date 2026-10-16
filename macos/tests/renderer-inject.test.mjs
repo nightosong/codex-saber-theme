@@ -466,6 +466,8 @@ function createFixture(theme, {
   const resizeObservers = [];
   const documentListeners = new Map();
   const windowListeners = new Map();
+  const liveListeners = new Set();
+  const createdUrls = new Set();
   const timers = new Map();
   let nextTimer = 1;
   let nextBlob = 1;
@@ -560,8 +562,9 @@ function createFixture(theme, {
     head: root,
     body,
     hidden: false,
-    addEventListener(name, handler) { documentListeners.set(name, handler); },
+    addEventListener(name, handler) { documentListeners.set(name, handler); liveListeners.add(handler); },
     removeEventListener(name, handler) {
+      liveListeners.delete(handler);
       if (documentListeners.get(name) === handler) documentListeners.delete(name);
     },
     createElement,
@@ -604,8 +607,9 @@ function createFixture(theme, {
   };
   const window = {
     history,
-    addEventListener(name, handler) { windowListeners.set(name, handler); },
+    addEventListener(name, handler) { windowListeners.set(name, handler); liveListeners.add(handler); },
     removeEventListener(name, handler) {
+      liveListeners.delete(handler);
       if (windowListeners.get(name) === handler) windowListeners.delete(name);
     },
     matchMedia(query) {
@@ -619,7 +623,7 @@ function createFixture(theme, {
     window.Image = class {
       naturalWidth = analysisFixture.naturalWidth;
       naturalHeight = analysisFixture.naturalHeight;
-      set src(_) { this.onload(); }
+      set src(value) { if (value) this.onload?.(); }
     };
   }
   const context = {
@@ -628,10 +632,11 @@ function createFixture(theme, {
     MutationObserver: class {
       constructor(callback) {
         this.callback = callback;
+        this.connected = false;
         observers.push(this);
       }
-      observe() {}
-      disconnect() {}
+      observe() { this.connected = true; }
+      disconnect() { this.connected = false; }
     },
     ResizeObserver: class {
       constructor(callback) {
@@ -643,8 +648,8 @@ function createFixture(theme, {
       disconnect() { this.target = null; }
     },
     URL: {
-      createObjectURL() { return `blob:fixture-${nextBlob++}`; },
-      revokeObjectURL(value) { revokedUrls.push(value); },
+      createObjectURL() { const url = `blob:fixture-${nextBlob++}`; createdUrls.add(url); return url; },
+      revokeObjectURL(value) { revokedUrls.push(value); createdUrls.delete(value); },
     },
     Blob,
     Uint8Array,
@@ -702,6 +707,8 @@ function createFixture(theme, {
 
   return {
     attributes,
+    liveListeners,
+    createdUrls,
     body,
     bodyAttributes,
     context,
@@ -1175,4 +1182,91 @@ assert.equal(explicit.root.classList.contains("codex-dream-skin"), false);
 assert.equal(explicit.nodes.has("codex-dream-skin-style"), false);
 assert.equal(explicit.window.__CODEX_DREAM_SKIN_STATE__, undefined);
 
-console.log("PASS: renderer honors adaptive art metadata, fallback, and cleanup behavior.");
+// Resource soak: each minute is simulated; this checks actual handles, not
+// source-text patterns. The browser soak separately measures real V8/DOM data.
+const soak = createFixture(backgroundRotationTheme);
+const soakPayload = soak.payloadFor(backgroundRotationTheme, ".fixture {}", null, [], null, null, null, null, null,
+  Array.from({ length: 29 }, () => "data:image/png;base64,AA=="));
+vm.runInNewContext(soakPayload, soak.context);
+for (let cycle = 0; cycle < 2000; cycle += 1) {
+  soak.flushTimers(60000);
+  assert.ok(soak.createdUrls.size <= 3, "Only primary/current/incoming images may have URLs.");
+  soak.flushTimers(1280);
+  assert.ok(soak.createdUrls.size <= 2);
+  assert.equal(soak.nodes.get("codex-dream-skin-background-crossfade").style.values.has("background-image"), false);
+  assert.equal(soak.rootStyle.values.get("--dream-skin-sidebar-next-art"), "none");
+  assert.equal(soak.timers.size, 1, "A settled rotation must leave exactly one next-rotation timer.");
+}
+assert.equal(soak.window.__CODEX_DREAM_SKIN_STATE__.metrics.rotations, 2000);
+soak.document.hidden = true;
+soak.window.__CODEX_DREAM_SKIN_STATE__.visibilityHandler();
+soak.flushTimers(60000);
+assert.equal(soak.timers.size, 0, "Hidden windows must not wake up for rotation.");
+assert.equal(soak.window.__CODEX_DREAM_SKIN_STATE__.metrics.rotations, 2000);
+soak.document.hidden = false;
+soak.window.__CODEX_DREAM_SKIN_STATE__.visibilityHandler();
+soak.flushTimers(64);
+assert.equal(soak.timers.size, 1, "Resume schedules one interval without replaying missed rotations.");
+const baseListenerCount = soak.liveListeners.size;
+for (let cycle = 0; cycle < 200; cycle += 1) {
+  vm.runInNewContext(soakPayload, soak.context);
+  assert.equal(soak.liveListeners.size, baseListenerCount, "Reinjection must remove previous event handlers.");
+  assert.equal(soak.observers.filter((observer) => observer.connected).length, 1);
+  assert.equal(soak.resizeObservers.filter((observer) => observer.target).length, 1);
+  assert.equal(soak.mediaQuery.listeners.size, 1);
+  assert.equal(soak.motionQuery.listeners.size, 1);
+  assert.equal(soak.createdUrls.size, 1);
+  assert.equal(soak.timers.size, 1);
+}
+soak.window.__CODEX_DREAM_SKIN_STATE__.cleanup();
+assert.equal(soak.createdUrls.size, 0);
+assert.equal(soak.timers.size, 0);
+assert.equal(soak.liveListeners.size, 0);
+assert.equal(soak.mediaQuery.listeners.size, 0);
+assert.equal(soak.motionQuery.listeners.size, 0);
+assert.equal(soak.observers.filter((observer) => observer.connected).length, 0);
+
+const wrappedHistory = createFixture(backgroundRotationTheme);
+vm.runInNewContext(wrappedHistory.payload, wrappedHistory.context);
+const oldHistoryState = wrappedHistory.window.__CODEX_DREAM_SKIN_STATE__;
+const wrappedPush = wrappedHistory.window.history.pushState;
+wrappedHistory.window.history.pushState = function (...args) { return wrappedPush.apply(this, args); };
+for (let cycle = 0; cycle < 50; cycle += 1) vm.runInNewContext(wrappedHistory.payload, wrappedHistory.context);
+wrappedHistory.window.history.pushState({}, "", "/task/latest");
+assert.equal(wrappedHistory.timers.size, 2, "External History wrappers must not accumulate old theme dispatchers.");
+const oldEnsureCalls = oldHistoryState.metrics.ensureCalls;
+wrappedHistory.flushTimers(720);
+wrappedHistory.flushTimers(64);
+assert.equal(oldHistoryState.metrics.ensureCalls, oldEnsureCalls, "Obsolete themes must not restyle the current document.");
+wrappedHistory.window.__CODEX_DREAM_SKIN_STATE__.cleanup();
+assert.equal(wrappedHistory.timers.size, 0);
+wrappedHistory.window.history.pushState({}, "", "/task/after-cleanup");
+assert.equal(wrappedHistory.timers.size, 0);
+
+const asynchronous = createFixture({ ...backgroundRotationTheme, artKey: "cached-art" }, {
+  analysisCache: new Map([["cached-art", cachedAnalysis]]),
+});
+const loadingImages = [];
+asynchronous.window.Image = class {
+  set src(value) { this.source = value; if (value) loadingImages.push(this); }
+};
+const asynchronousPayload = asynchronous.payloadFor({ ...backgroundRotationTheme, artKey: "cached-art" }, ".fixture {}",
+  null, [], null, null, null, null, null, ["data:image/png;base64,AA=="]);
+vm.runInNewContext(asynchronousPayload, asynchronous.context);
+asynchronous.flushTimers(60000);
+const obsoleteLoad = loadingImages.at(-1).onload;
+assert.equal(asynchronous.window.__CODEX_DREAM_SKIN_STATE__.resources().pendingImages, 1);
+vm.runInNewContext(asynchronousPayload, asynchronous.context);
+assert.equal(loadingImages.at(-1).source, "", "Reinjection cancels an unfinished image load.");
+obsoleteLoad();
+assert.equal(asynchronous.attributes.get("data-dream-background-index"), "0");
+assert.equal(asynchronous.window.__CODEX_DREAM_SKIN_STATE__.resources().pendingImages, 0);
+asynchronous.flushTimers(60000);
+loadingImages.at(-1).onerror();
+assert.equal(asynchronous.window.__CODEX_DREAM_SKIN_STATE__.resources().activeVariantUrls, 0);
+assert.equal(asynchronous.window.__CODEX_DREAM_SKIN_STATE__.metrics.imageLoadErrors, 1);
+asynchronous.window.__CODEX_DREAM_SKIN_STATE__.cleanup();
+assert.equal(asynchronous.timers.size, 0);
+assert.equal(asynchronous.createdUrls.size, 0);
+
+console.log("PASS: renderer, 2000 rotations, 200 reinjections, hidden pause, image cancellation, and complete teardown.");

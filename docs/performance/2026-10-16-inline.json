@@ -1,0 +1,246 @@
+{
+  "injection": "inline",
+  "browser": {
+    "protocolVersion": "1.3",
+    "product": "Chrome/155.0.8059.40",
+    "revision": "@cfaadc5a132d78e1828635aa8405a499f3e14864",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/155.0.0.0 Safari/537.36",
+    "jsVersion": "15.5.35.20"
+  },
+  "rotations": 120,
+  "reinjections": 30,
+  "samples": [
+    {
+      "phase": "warm",
+      "heapUsedBytes": 23447168,
+      "backingStorageBytes": 95329,
+      "dom": {
+        "documents": 1,
+        "nodes": 55,
+        "jsEventListeners": 8
+      },
+      "theme": {
+        "resources": {
+          "variantBlobs": 29,
+          "variantBytes": 5966330,
+          "activeVariantUrls": 0,
+          "pendingImages": 0,
+          "rotationScheduled": true,
+          "crossfadeScheduled": false
+        },
+        "metrics": {
+          "ensureCalls": 3,
+          "rootPasses": 2,
+          "routePasses": 2,
+          "layoutReads": 2,
+          "attributeWrites": 15,
+          "styleWrites": 46,
+          "textWrites": 4,
+          "analysisRuns": 1,
+          "analysisCacheHits": 0,
+          "firstEnsureMs": 8.9,
+          "analysisMs": 59,
+          "rotations": 0,
+          "imageLoadErrors": 0
+        },
+        "timers": 1
+      }
+    },
+    {
+      "phase": "rotation-30",
+      "heapUsedBytes": 23468828,
+      "backingStorageBytes": 95420,
+      "dom": {
+        "documents": 1,
+        "nodes": 56,
+        "jsEventListeners": 8
+      },
+      "theme": {
+        "resources": {
+          "variantBlobs": 29,
+          "variantBytes": 5966330,
+          "activeVariantUrls": 0,
+          "pendingImages": 0,
+          "rotationScheduled": true,
+          "crossfadeScheduled": false
+        },
+        "metrics": {
+          "ensureCalls": 3,
+          "rootPasses": 2,
+          "routePasses": 2,
+          "layoutReads": 2,
+          "attributeWrites": 105,
+          "styleWrites": 136,
+          "textWrites": 4,
+          "analysisRuns": 1,
+          "analysisCacheHits": 0,
+          "firstEnsureMs": 8.9,
+          "analysisMs": 59,
+          "rotations": 30,
+          "imageLoadErrors": 0
+        },
+        "timers": 1
+      }
+    },
+    {
+      "phase": "rotation-60",
+      "heapUsedBytes": 23468992,
+      "backingStorageBytes": 95420,
+      "dom": {
+        "documents": 1,
+        "nodes": 56,
+        "jsEventListeners": 8
+      },
+      "theme": {
+        "resources": {
+          "variantBlobs": 29,
+          "variantBytes": 5966330,
+          "activeVariantUrls": 0,
+          "pendingImages": 0,
+          "rotationScheduled": true,
+          "crossfadeScheduled": false
+        },
+        "metrics": {
+          "ensureCalls": 3,
+          "rootPasses": 2,
+          "routePasses": 2,
+          "layoutReads": 2,
+          "attributeWrites": 195,
+          "styleWrites": 226,
+          "textWrites": 4,
+          "analysisRuns": 1,
+          "analysisCacheHits": 0,
+          "firstEnsureMs": 8.9,
+          "analysisMs": 59,
+          "rotations": 60,
+          "imageLoadErrors": 0
+        },
+        "timers": 1
+      }
+    },
+    {
+      "phase": "rotation-90",
+      "heapUsedBytes": 23469028,
+      "backingStorageBytes": 95420,
+      "dom": {
+        "documents": 1,
+        "nodes": 56,
+        "jsEventListeners": 8
+      },
+      "theme": {
+        "resources": {
+          "variantBlobs": 29,
+          "variantBytes": 5966330,
+          "activeVariantUrls": 0,
+          "pendingImages": 0,
+          "rotationScheduled": true,
+          "crossfadeScheduled": false
+        },
+        "metrics": {
+          "ensureCalls": 3,
+          "rootPasses": 2,
+          "routePasses": 2,
+          "layoutReads": 2,
+          "attributeWrites": 285,
+          "styleWrites": 316,
+          "textWrites": 4,
+          "analysisRuns": 1,
+          "analysisCacheHits": 0,
+          "firstEnsureMs": 8.9,
+          "analysisMs": 59,
+          "rotations": 90,
+          "imageLoadErrors": 0
+        },
+        "timers": 1
+      }
+    },
+    {
+      "phase": "rotation-120",
+      "heapUsedBytes": 23470372,
+      "backingStorageBytes": 95420,
+      "dom": {
+        "documents": 1,
+        "nodes": 56,
+        "jsEventListeners": 8
+      },
+      "theme": {
+        "resources": {
+          "variantBlobs": 29,
+          "variantBytes": 5966330,
+          "activeVariantUrls": 0,
+          "pendingImages": 0,
+          "rotationScheduled": true,
+          "crossfadeScheduled": false
+        },
+        "metrics": {
+          "ensureCalls": 3,
+          "rootPasses": 2,
+          "routePasses": 2,
+          "layoutReads": 2,
+          "attributeWrites": 375,
+          "styleWrites": 406,
+          "textWrites": 4,
+          "analysisRuns": 1,
+          "analysisCacheHits": 0,
+          "firstEnsureMs": 8.9,
+          "analysisMs": 59,
+          "rotations": 120,
+          "imageLoadErrors": 0
+        },
+        "timers": 1
+      }
+    },
+    {
+      "phase": "reinjected-30",
+      "heapUsedBytes": 23421836,
+      "backingStorageBytes": 95420,
+      "dom": {
+        "documents": 1,
+        "nodes": 56,
+        "jsEventListeners": 8
+      },
+      "theme": {
+        "resources": {
+          "variantBlobs": 29,
+          "variantBytes": 5966330,
+          "activeVariantUrls": 0,
+          "pendingImages": 0,
+          "rotationScheduled": true,
+          "crossfadeScheduled": false
+        },
+        "metrics": {
+          "ensureCalls": 2,
+          "rootPasses": 1,
+          "routePasses": 2,
+          "layoutReads": 2,
+          "attributeWrites": 0,
+          "styleWrites": 6,
+          "textWrites": 0,
+          "analysisRuns": 0,
+          "analysisCacheHits": 1,
+          "firstEnsureMs": 0.4,
+          "analysisMs": null,
+          "rotations": 0,
+          "imageLoadErrors": 0
+        },
+        "timers": 1
+      }
+    },
+    {
+      "phase": "cleaned",
+      "heapUsedBytes": 641452,
+      "backingStorageBytes": 170,
+      "dom": {
+        "documents": 1,
+        "nodes": 18,
+        "jsEventListeners": 0
+      },
+      "theme": {
+        "resources": null,
+        "metrics": null,
+        "timers": 0
+      }
+    }
+  ],
+  "scope": "Isolated HTML fixture with actual theme CSS and 4K image assets. Post-GC V8/DOM bounds; not full Codex or GPU/RSS leak proof."
+}

@@ -87,6 +87,18 @@ remove_legacy_launcher() {
 }
 
 if [ "$CREATE_LAUNCHERS" = "true" ]; then
+  # Preserve the previous launcher on a failed rebuild. Do not replace an
+  # unrelated app with the same display name.
+  launcher="$HOME/Applications/Saber Theme.app"
+  pending_launcher="$HOME/Applications/Saber Theme.pending.$$.app"
+  /bin/mkdir -p "$HOME/Applications"
+  if [ -e "$launcher" ]; then
+    launcher_id="$(/usr/bin/plutil -extract CFBundleIdentifier raw -o - "$launcher/Contents/Info.plist" 2>/dev/null || true)"
+    [ "$launcher_id" = io.github.codex-saber-theme.launcher ] || fail "Refusing to replace an unrelated app: $launcher"
+  fi
+  /bin/bash "$SCRIPT_DIR/build-launcher-macos.sh" "$pending_launcher" --installed
+  [ ! -e "$launcher" ] || /bin/mv "$launcher" "$launcher.backup.$(/bin/date '+%Y%m%d-%H%M%S').$$"
+  /bin/mv "$pending_launcher" "$launcher"
   /bin/mkdir -p "$HOME/Desktop"
   remove_legacy_launcher "$HOME/Desktop/Codex Dream Skin.command"
   remove_legacy_launcher "$HOME/Desktop/Codex Dream Skin - Customize.command"
@@ -107,6 +119,7 @@ printf 'Codex Saber Theme %s installed at %s for Codex %s using its signed Node.
   "$SKIN_VERSION" "$PROJECT_ROOT" "$CODEX_VERSION" "$NODE_VERSION"
 printf 'Use the Desktop launchers to customize, start, verify, or restore the official appearance.\n'
 printf 'The Saber preset is ready in your theme library.\n'
+if [ "$CREATE_LAUNCHERS" = "true" ]; then printf 'Open ~/Applications/Saber Theme.app; you can keep it in the Dock.\n'; fi
 
 if [ "$LAUNCH_AFTER_INSTALL" = "true" ]; then
   "$SCRIPT_DIR/start-dream-skin-macos.sh" --port "$PORT" --prompt-restart

@@ -51,20 +51,20 @@ Install location after step 2:
 To build the “double-click install” folder layout for non-git users:
 
 ```bash
-./scripts/build-client-release.sh "$HOME/Desktop/Codex Saber Theme.zip"
+./scripts/build-client-release.sh
 ```
 
-That ZIP contains a visible installer plus a hidden `.codex-saber-theme` engine. Do not ship only CSS/images.
+The versioned ZIP is written under `release/` and contains `Saber Theme.app`, a visible installer, and a hidden `.codex-saber-theme` engine. Do not ship only CSS/images. Runtime and application versions come from `VERSION`.
 
 ## How it works (security boundary)
 
 1. Discover `com.openai.codex` and validate signature / Team ID / arch / bundled Node.
-2. Start Codex via user `launchd` with CDP bound to `127.0.0.1` only.
+2. Start the unmodified official app normally with CDP bound to `127.0.0.1` only.
 3. Accept the debug port only when it belongs to Codex (or a legitimate child).
 4. Inject only into expected `app://` renderer targets.
 5. Resolve the selected theme and image to real paths, then enforce 16 MB,
    `16384px`-per-side, and 50-megapixel limits before injection.
-6. Keep a small injector alive across reloads and route changes.
+6. Transfer compressed images separately from resident renderer code, inject once, and exit. Route changes use bounded event handlers; a full reload/new window needs another launch. `--foreground-injector` explicitly opts into a development watcher and persistent early-injection scripts.
 7. Pause/Restore stops the injector only when PID, executable, script path, and
    start time match the recorded job; a stop failure preserves state and aborts.
 8. Config backup/restore requires Codex to be closed, strict UTF-8, an operation
