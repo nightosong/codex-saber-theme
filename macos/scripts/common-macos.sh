@@ -27,7 +27,11 @@ START_ERROR_LOG="$STATE_ROOT/start-error.log"
 CODEX_APP_JOB_LABEL="com.openai.codex-dream-skin-studio.app"
 INJECTOR_JOB_LABEL="com.openai.codex-dream-skin-studio.injector"
 EXPECTED_CODEX_TEAM_ID="${CODEX_EXPECTED_TEAM_ID:-2DC432GLL2}"
-SKIN_VERSION="0.0.1"
+SKIN_VERSION="$(/usr/bin/tr -d '\r\n' < "$PROJECT_ROOT/VERSION")"
+if ! [[ "$SKIN_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+  printf 'Codex Saber Theme: invalid VERSION file.\n' >&2
+  exit 1
+fi
 DEPRECATED_BUNDLED_PRESET_IDS=(
   preset-amber-dusk
   preset-cyber-neon

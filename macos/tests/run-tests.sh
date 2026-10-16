@@ -44,9 +44,12 @@ fi
 
 "$NODE" "$ROOT/scripts/injector.mjs" --check-payload >/dev/null
 "$NODE" "$ROOT/tests/image-metadata.test.mjs"
+"$NODE" "$ROOT/tests/version.test.mjs"
 "$NODE" "$ROOT/tests/injector-bootstrap.test.mjs"
+"$NODE" "$ROOT/tests/resource-transfer.test.mjs"
 "$NODE" "$ROOT/tests/renderer-inject.test.mjs"
 "$NODE" "$ROOT/tests/theme-stage.test.mjs"
+/bin/bash "$ROOT/tests/launcher.test.sh"
 
 # Every bundled preset must be a valid, injectable theme pack with a preset-* id.
 for preset in "$ROOT"/presets/preset-*/; do
@@ -738,7 +741,7 @@ CRLF_BACKUP="$TMP/config-crlf-backup.json"
 "$NODE" "$ROOT/scripts/theme-config.mjs" restore "$CRLF_CONFIG" "$CRLF_BACKUP" >/dev/null
 /usr/bin/cmp -s "$CRLF_CONFIG" "$TMP/original-crlf.toml"
 
-/usr/bin/env -u HOME /bin/bash -c '. "$1/scripts/common-macos.sh"; [ -n "$HOME" ] && [ "$SKIN_VERSION" = "0.0.1" ]' _ "$ROOT"
+/usr/bin/env -u HOME /bin/bash -c '. "$1/scripts/common-macos.sh"; [ -n "$HOME" ] && [ "$SKIN_VERSION" = "$(/usr/bin/tr -d "\r\n" < "$1/VERSION")" ]' _ "$ROOT"
 DOCTOR_HOME="$TMP/doctor-home"
 DOCTOR_THEME="$DOCTOR_HOME/Library/Application Support/CodexDreamSkinStudio/theme"
 /bin/mkdir -p "$DOCTOR_HOME/.codex" "$DOCTOR_THEME"

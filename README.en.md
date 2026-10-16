@@ -1,12 +1,16 @@
 # Codex Saber Theme
 
+Native launchers are now available: macOS release ZIPs include a self-contained `Saber Theme.app`; Windows users can double-click `windows/Install Saber Theme.cmd` to create Desktop and Start menu shortcuts. The shared engine remains under `macos/` for compatibility. Windows Store launch and visual behavior still need real-device acceptance testing; see [Windows instructions](windows/README.md).
+
+The default launcher injects once and exits. A full page reload or new window may need another launch. Image transfer is separated from resident script source, rotation pauses while hidden, and transition/preload resources are cleaned up. See [performance validation](docs/performance/README.md) for scope and reproduction commands.
+
 [中文](./README.md)
 
-A macOS Codex theme repository designed to be installed and maintained directly by AI / Codex.
+A Codex theme repository with macOS and Windows launchers, designed to be installed and maintained directly by AI / Codex.
 
 The repository includes the complete theme engine and Saber assets. No separate theme tool is required, and the official Codex application files are never modified.
 
-Current version: `0.0.1`
+Current version: `0.1.0` · [Download release](https://github.com/nightosong/codex-saber-theme/releases/tag/v0.1.0)
 
 ## Preview
 
@@ -36,11 +40,11 @@ Codex will follow [`AGENTS.md`](./AGENTS.md) to test, install, activate, and ver
 
 ## Requirements
 
-- macOS
+- macOS, or native Windows (real-device acceptance pending)
 - Official Codex Desktop installed
 - Codex launched at least once
 
-The engine is installed at `~/.codex/codex-saber-theme`. Existing themes and backups remain in the compatible state directory.
+The engine is installed at `~/.codex/codex-saber-theme` on macOS or `%LOCALAPPDATA%\CodexSaberTheme` on Windows. Existing themes and backups are preserved.
 
 ## Restore
 

@@ -1,0 +1,66 @@
+name: Theme checks
+on: [push, pull_request, workflow_dispatch]
+jobs:
+  macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Portable engine tests
+        run: |
+          node macos/tests/image-metadata.test.mjs
+          node macos/tests/version.test.mjs
+          node macos/tests/injector-bootstrap.test.mjs
+          node macos/tests/resource-transfer.test.mjs
+          node macos/tests/renderer-inject.test.mjs
+          node macos/tests/theme-stage.test.mjs
+          /bin/bash macos/tests/launcher.test.sh
+          node macos/scripts/injector.mjs --check-payload --theme-dir macos/presets/preset-saber-ice-atelier
+      - name: Build native launcher
+        run: |
+          macos/scripts/build-launcher-macos.sh "$RUNNER_TEMP/Saber Theme.app" --embedded
+          codesign --verify --deep --strict "$RUNNER_TEMP/Saber Theme.app"
+          ditto -c -k --keepParent "$RUNNER_TEMP/Saber Theme.app" "$RUNNER_TEMP/Saber Theme macOS.zip"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Saber-Theme-macOS
+          path: ${{ runner.temp }}/Saber Theme macOS.zip
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Windows engine and launcher tests
+        shell: powershell
+        run: |
+          & windows/tests/runtime.Tests.ps1
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          node macos/tests/image-metadata.test.mjs
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          node macos/tests/version.test.mjs
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          node macos/tests/injector-bootstrap.test.mjs
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          node macos/tests/resource-transfer.test.mjs
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          node macos/tests/renderer-inject.test.mjs
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          node macos/scripts/injector.mjs --check-payload --theme-dir macos/presets/preset-saber-ice-atelier
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Saber-Theme-Windows
+          path: |
+            windows/
+            macos/scripts/
+            macos/VERSION
+            macos/package.json
+            macos/assets/
+            macos/presets/
+            README.md
+            LICENSE
+            NOTICE.md

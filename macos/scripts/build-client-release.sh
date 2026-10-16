@@ -2,7 +2,8 @@
 
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd -P)"
-OUTPUT="${1:-$HOME/Desktop/Codex Saber Theme.zip}"
+. "$ROOT/scripts/common-macos.sh"
+OUTPUT="${1:-$ROOT/release/codex-saber-theme-v$SKIN_VERSION-macos.zip}"
 TMP="$(/usr/bin/mktemp -d /tmp/codex-dream-client.XXXXXX)"
 CLIENT_ROOT="$TMP/Codex Saber Theme"
 ENGINE="$CLIENT_ROOT/.codex-saber-theme"
@@ -17,6 +18,8 @@ trap '/bin/rm -rf "$TMP"' EXIT
   --exclude 'runtime/' \
   "$ROOT/" "$ENGINE/"
 
+"$ROOT/scripts/build-launcher-macos.sh" "$CLIENT_ROOT/Saber Theme.app" --embedded
+
 /usr/bin/printf '%s\n' \
   '#!/bin/bash' \
   'set -euo pipefail' \
@@ -25,11 +28,11 @@ trap '/bin/rm -rf "$TMP"' EXIT
   > "$CLIENT_ROOT/安装 Codex Saber Theme.command"
 
 /usr/bin/printf '%s\n' \
-  'Codex Saber Theme 0.0.1' \
+  "Codex Saber Theme $SKIN_VERSION" \
   '' \
-  '推荐方式：把这个完整 ZIP、你喜欢的图片和“给 Codex 的部署提示词.md”一起发给自己的 Codex。' \
+  '推荐方式：把 Saber Theme.app 拖到“应用程序”，双击启动。首次运行会安装主题引擎；需要关闭 Codex 时会先确认。' \
   '' \
-  '手动方式：双击“安装 Codex Saber Theme.command”。安装完成后，桌面会出现启动、定制、验证和恢复四个入口。' \
+  '也可以双击“安装 Codex Saber Theme.command”；安装后可用 ~/Applications/Saber Theme.app 启动。' \
   '' \
   '不要只复制图片或 CSS。隐藏目录 .codex-saber-theme 是完整运行引擎，请勿删除。' \
   > "$CLIENT_ROOT/使用说明.txt"

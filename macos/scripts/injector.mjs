@@ -1,14 +1,14 @@
 import fs from "node:fs/promises";
 import { constants as fsConstants, watch as watchFs } from "node:fs";
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { readImageMetadata } from "./image-metadata.mjs";
+import { SKIN_VERSION } from "./version.mjs";
 
 const scriptPath = fileURLToPath(import.meta.url);
 const here = path.dirname(scriptPath);
 const root = path.resolve(here, "..");
-const SKIN_VERSION = "0.0.1";
 const LOOPBACK_HOSTS = new Set(["127.0.0.1", "localhost", "[::1]"]);
 const CDP_ID_PATTERN = /^[A-Za-z0-9._-]{1,200}$/;
 const MAX_ART_BYTES = 16 * 1024 * 1024;
@@ -31,6 +31,8 @@ function parseArgs(argv) {
     screenshot: null,
     reload: false,
     themeDir: null,
+    samples: 10,
+    intervalMs: 2000,
   };
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
@@ -40,6 +42,9 @@ function parseArgs(argv) {
     else if (arg === "--verify") options.mode = "verify";
     else if (arg === "--remove") options.mode = "remove";
     else if (arg === "--check-payload") options.mode = "check";
+    else if (arg === "--diagnose") options.mode = "diagnose";
+    else if (arg === "--samples") options.samples = Number(argv[++i]);
+    else if (arg === "--interval-ms") options.intervalMs = Number(argv[++i]);
     else if (arg === "--timeout-ms") options.timeoutMs = Number(argv[++i]);
     else if (arg === "--screenshot") options.screenshot = path.resolve(argv[++i]);
     else if (arg === "--theme-dir") options.themeDir = path.resolve(argv[++i]);
@@ -51,6 +56,10 @@ function parseArgs(argv) {
   }
   if (!Number.isFinite(options.timeoutMs) || options.timeoutMs < 250 || options.timeoutMs > 120000) {
     throw new Error(`Invalid timeout: ${options.timeoutMs}`);
+  }
+  if (!Number.isInteger(options.samples) || options.samples < 2 || options.samples > 3600
+    || !Number.isInteger(options.intervalMs) || options.intervalMs < 1000 || options.intervalMs > 60000) {
+    throw new Error("Diagnostics require 2..3600 samples and a 1000..60000ms interval");
   }
   return options;
 }
@@ -81,7 +90,7 @@ function isValidCdpPageTarget(item, port) {
   }
 }
 
-class CdpSession {
+export class CdpSession {
   constructor(target, port) {
     this.target = target;
     this.ws = new WebSocket(validatedDebuggerUrl(target, port));
@@ -110,8 +119,10 @@ class CdpSession {
       }
       this.pending.clear();
     });
-    await this.send("Runtime.enable");
-    await this.send("Page.enable");
+    // Runtime.evaluate does not require Runtime.enable. Enabling the domain
+    // streams/replays all app console output for the lifetime of a watcher.
+    try { await this.send("Page.enable"); }
+    catch (error) { this.close(); throw error; }
     return this;
   }
 
@@ -183,6 +194,7 @@ class CdpSession {
   }
 
   close() {
+    this.listeners.clear();
     for (const waiter of this.pending.values()) {
       clearTimeout(waiter.timeout);
       waiter.reject(new Error("CDP session closed"));
@@ -936,7 +948,7 @@ function invalidateStaticPayloadAssets() {
   staticPayloadAssets = null;
 }
 
-async function loadPayload(themeDir) {
+export async function loadPayload(themeDir) {
   const startedAt = performance.now();
   const [staticAssets, loaded] = await Promise.all([
     loadStaticPayloadAssets(),
@@ -1043,25 +1055,31 @@ async function loadPayload(themeDir) {
     theme.animatedOverlayKey = createHash("sha256").update(animatedOverlay.bytes).digest("hex").slice(0, 20);
     return `data:image/webp;base64,${animatedOverlay.bytes.toString("base64")}`;
   })();
-  const payload = template
+  const imageArguments = [artDataUrl, backgroundVariantDataUrls, homeImageDataUrl, cardArtDataUrls,
+    sidebarEmblemDataUrl, environmentCardArtDataUrl, filePanelArtDataUrl, reviewPanelArtDataUrl, animatedOverlayDataUrl];
+  const imageTokens = ["ART", "BACKGROUND_VARIANT", "HOME_ART", "CARD_ART", "SIDEBAR_EMBLEM",
+    "ENVIRONMENT_CARD_ART", "FILE_PANEL_ART", "REVIEW_PANEL_ART", "ANIMATED_OVERLAY"];
+  const renderPayload = (argumentsSource) => {
+    let value = template
     .replace("__DREAM_SKIN_CSS_JSON__", JSON.stringify(css))
-    .replace("__DREAM_SKIN_ART_JSON__", JSON.stringify(artDataUrl))
-    .replace("__DREAM_SKIN_BACKGROUND_VARIANT_JSON__", JSON.stringify(backgroundVariantDataUrls))
-    .replace("__DREAM_SKIN_HOME_ART_JSON__", JSON.stringify(homeImageDataUrl))
-    .replace("__DREAM_SKIN_CARD_ART_JSON__", JSON.stringify(cardArtDataUrls))
-    .replace("__DREAM_SKIN_SIDEBAR_EMBLEM_JSON__", JSON.stringify(sidebarEmblemDataUrl))
-    .replace("__DREAM_SKIN_ENVIRONMENT_CARD_ART_JSON__", JSON.stringify(environmentCardArtDataUrl))
-    .replace("__DREAM_SKIN_FILE_PANEL_ART_JSON__", JSON.stringify(filePanelArtDataUrl))
-    .replace("__DREAM_SKIN_REVIEW_PANEL_ART_JSON__", JSON.stringify(reviewPanelArtDataUrl))
-    .replace("__DREAM_SKIN_ANIMATED_OVERLAY_JSON__", JSON.stringify(animatedOverlayDataUrl))
     .replace("__DREAM_SKIN_THEME_JSON__", JSON.stringify(theme))
     .replace("__DREAM_SKIN_VERSION_JSON__", JSON.stringify(SKIN_VERSION))
     .replace("__DREAM_SKIN_STYLE_REVISION_JSON__", JSON.stringify(styleRevision));
+    imageTokens.forEach((token, index) => { value = value.replace(`__DREAM_SKIN_${token}_JSON__`, argumentsSource[index]); });
+    return value;
+  };
+  const resourceKey = `__SABER_PENDING_${randomUUID().replaceAll("-", "")}`;
+  const serializedImages = JSON.stringify(imageArguments);
+  // This large script has no surviving functions. Keeping Base64 literals in
+  // the renderer's own script pins their source text for its entire lifetime.
+  const resourcePayload = `window[${JSON.stringify(resourceKey)}] = (${decodeImageResources.toString()})(${serializedImages}); true`;
+  const runtimePayload = renderPayload(imageArguments.map((_, index) => `window[${JSON.stringify(resourceKey)}][${index}]`));
   const revision = createHash("sha256")
     .update(SKIN_VERSION)
     .update(css)
     .update(template)
     .update(JSON.stringify(theme))
+    .update(serializedImages)
     .digest("hex")
     .slice(0, 20);
   return {
@@ -1074,7 +1092,10 @@ async function loadPayload(themeDir) {
     filePanelArtBytes: filePanelArt?.bytes.length ?? 0,
     reviewPanelArtBytes: reviewPanelArt?.bytes.length ?? 0,
     animatedOverlayBytes: animatedOverlay?.bytes.length ?? 0,
-    payload,
+    get payload() { return renderPayload(imageArguments.map((value) => JSON.stringify(value))); },
+    resourcePayload,
+    runtimePayload,
+    resourceKey,
     revision,
     theme,
     timings: {
@@ -1084,8 +1105,28 @@ async function loadPayload(themeDir) {
   };
 }
 
-async function applyToSession(session, payload) {
-  return session.evaluate(payload);
+function decodeImageResources(values) {
+  const decode = (value) => {
+    if (value === null) return null;
+    if (Array.isArray(value)) return value.map(decode);
+    const comma = value.indexOf(",");
+    const mime = value.slice(5, value.indexOf(";"));
+    const binary = atob(value.slice(comma + 1));
+    const bytes = new Uint8Array(binary.length);
+    for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+    return new Blob([bytes], { type: mime });
+  };
+  return values.map(decode);
+}
+
+export async function applyToSession(session, payload) {
+  if (typeof payload === "string") return session.evaluate(payload);
+  try {
+    await session.evaluate(payload.resourcePayload);
+    return await session.evaluate(payload.runtimePayload);
+  } finally {
+    await session.evaluate(`delete window[${JSON.stringify(payload.resourceKey)}]`).catch(() => {});
+  }
 }
 
 async function removeFromSession(session) {
@@ -1224,40 +1265,91 @@ async function capture(session, outputPath) {
 }
 
 async function runOneShot(options) {
-  const connected = await connectCodexTargets(options.port, options.timeoutMs);
   const loaded = (options.mode === "once" || options.reload) ? await loadPayload(options.themeDir) : null;
-  const payload = loaded?.payload ?? null;
+  const connected = await connectCodexTargets(options.port, options.timeoutMs);
+  const payload = loaded ?? null;
   const results = [];
   let screenshotCaptured = false;
 
-  for (const { target, session, probe } of connected) {
-    try {
-      if (options.mode === "remove") await removeFromSession(session);
-      else if (options.mode === "once") await applyToSession(session, payload);
+  try {
+    for (const { target, session, probe } of connected) {
+      try {
+        if (options.mode === "remove") await removeFromSession(session);
+        else if (options.mode === "once") await applyToSession(session, payload);
 
-      if (options.reload) {
-        await session.send("Page.reload", { ignoreCache: true });
-        await new Promise((resolve) => setTimeout(resolve, 1600));
-        if (options.mode !== "remove") await applyToSession(session, payload);
+        if (options.reload) {
+          await session.send("Page.reload", { ignoreCache: true });
+          await new Promise((resolve) => setTimeout(resolve, 1600));
+          if (options.mode !== "remove") await applyToSession(session, payload);
+        }
+
+        const result = options.mode === "remove"
+          ? await verifyRemovedSession(session)
+          : await waitForVerifiedSession(session, options.timeoutMs);
+        results.push({ targetId: target.id, title: target.title, url: target.url, probe, result });
+
+        if (options.screenshot && !screenshotCaptured) {
+          await capture(session, options.screenshot);
+          screenshotCaptured = true;
+        }
+      } finally {
+        session.close();
       }
-
-      const result = options.mode === "remove"
-        ? await verifyRemovedSession(session)
-        : await waitForVerifiedSession(session, options.timeoutMs);
-      results.push({ targetId: target.id, title: target.title, url: target.url, probe, result });
-
-      if (options.screenshot && !screenshotCaptured) {
-        await capture(session, options.screenshot);
-        screenshotCaptured = true;
-      }
-    } finally {
-      session.close();
     }
+  } finally {
+    // A failure on one target must also close the sessions not yet visited.
+    for (const { session } of connected) session.close();
   }
 
   console.log(JSON.stringify({ mode: options.mode, version: SKIN_VERSION, port: options.port, targets: results }, null, 2));
   const failed = results.length === 0 || results.some((item) => options.mode === "remove" ? item.result !== true : !item.result?.pass);
   if (failed) process.exitCode = 2;
+}
+
+async function runDiagnostics(options) {
+  const connected = await connectCodexTargets(options.port, options.timeoutMs);
+  const baselines = new Map();
+  try {
+    for (const { session } of connected) await session.send("Performance.enable");
+    for (let sample = 0; sample < options.samples; sample += 1) {
+      for (const { target, session } of connected) {
+        const [heap, dom, performanceMetrics, theme] = await Promise.all([
+          session.send("Runtime.getHeapUsage"),
+          session.send("Memory.getDOMCounters"),
+          session.send("Performance.getMetrics"),
+          session.evaluate(`(() => {
+            const state = window.__CODEX_DREAM_SKIN_STATE__;
+            return { installed: Boolean(state), version: state?.version ?? null,
+              metrics: state?.metrics ?? null, resources: state?.resources?.() ?? null,
+              hidden: document.hidden };
+          })()`),
+        ]);
+        const metrics = Object.fromEntries(performanceMetrics.metrics
+          .filter(({ name }) => ["TaskDuration", "ScriptDuration", "LayoutDuration", "RecalcStyleDuration"].includes(name))
+          .map(({ name, value }) => [name, value]));
+        const row = { type: "sample", at: new Date().toISOString(), sample, targetId: target.id,
+          heapUsedBytes: heap.usedSize, heapTotalBytes: heap.totalSize,
+          embedderHeapUsedBytes: heap.embedderHeapUsedSize ?? null,
+          backingStorageBytes: heap.backingStorageSize ?? null, dom, performance: metrics, theme };
+        if (!baselines.has(target.id)) baselines.set(target.id, row);
+        console.log(JSON.stringify(row));
+        if (sample === options.samples - 1) {
+          const first = baselines.get(target.id);
+          console.log(JSON.stringify({ type: "summary", targetId: target.id,
+            heapUsedDeltaBytes: row.heapUsedBytes - first.heapUsedBytes,
+            nodeDelta: dom.nodes - first.dom.nodes,
+            listenerDelta: dom.jsEventListeners - first.dom.jsEventListeners,
+            note: "Renderer-wide trend, not proof of a theme leak. No reload, forced GC, or content capture performed." }));
+        }
+      }
+      if (sample + 1 < options.samples) await new Promise((resolve) => setTimeout(resolve, options.intervalMs));
+    }
+  } finally {
+    for (const { session } of connected) {
+      await session.send("Performance.disable").catch(() => {});
+      session.close();
+    }
+  }
 }
 
 export function earlyPayloadFor(payload, revision) {
@@ -1324,7 +1416,7 @@ function watchPayloadSources(themeDir, onDirty) {
 async function runWatch(options) {
   let current = await loadPayload(options.themeDir);
   const sessions = new Map();
-  const rejected = new Set();
+  const rejected = new Map();
   let stopping = false;
   let reloadTimer = null;
   let reloadChain = Promise.resolve();
@@ -1402,6 +1494,9 @@ async function runWatch(options) {
       }
 
       const activeIds = new Set(targets.map((target) => target.id));
+      for (const [id, retryAt] of rejected) {
+        if (!activeIds.has(id) || Date.now() >= retryAt) rejected.delete(id);
+      }
       for (const [id, record] of sessions) {
         if (!activeIds.has(id) || record.session.closed) {
           record.session.close();
@@ -1410,7 +1505,7 @@ async function runWatch(options) {
       }
 
       for (const target of targets) {
-        if (sessions.has(target.id)) continue;
+        if (sessions.has(target.id) || rejected.has(target.id)) continue;
         let session;
         let record;
         try {
@@ -1429,7 +1524,7 @@ async function runWatch(options) {
             session.close();
             if (!rejected.has(target.id)) {
               console.error(`[dream-skin] rejected non-Codex app target ${target.id}`);
-              rejected.add(target.id);
+              rejected.set(target.id, Date.now() + 15000);
             }
             continue;
           }
@@ -1488,11 +1583,14 @@ if (path.resolve(process.argv[1] || "") === path.resolve(scriptPath)) {
         cardArtBytes: loaded.cardArtBytes,
         cardArtCount: loaded.theme.cardArt?.length ?? 0,
         payloadBytes: Buffer.byteLength(loaded.payload),
+        runtimePayloadBytes: Buffer.byteLength(loaded.runtimePayload),
+        resourceTransferBytes: Buffer.byteLength(loaded.resourcePayload),
         artMetadata: loaded.theme.artMetadata ?? null,
         homeArtMetadata: loaded.theme.homeArtMetadata ?? null,
         timings: loaded.timings,
       }, null, 2));
-    } else if (options.mode === "watch") await runWatch(options);
+    } else if (options.mode === "diagnose") await runDiagnostics(options);
+    else if (options.mode === "watch") await runWatch(options);
     else await runOneShot(options);
   } catch (error) {
     console.error(`[dream-skin] ${error.stack || error.message}`);

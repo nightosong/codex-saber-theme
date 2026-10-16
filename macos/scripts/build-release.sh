@@ -2,7 +2,8 @@
 
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd -P)"
-VERSION="$(/usr/bin/tr -d '[:space:]' < "$ROOT/VERSION")"
+. "$ROOT/scripts/common-macos.sh"
+VERSION="$SKIN_VERSION"
 RELEASE_DIR="$ROOT/release"
 ARCHIVE="$RELEASE_DIR/codex-saber-theme-v$VERSION.zip"
 TMP="$(/usr/bin/mktemp -d /tmp/codex-dream-skin-release.XXXXXX)"
